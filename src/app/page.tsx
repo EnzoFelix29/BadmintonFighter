@@ -14,15 +14,18 @@ import {
   updateProfile,
   type PlayerProfile,
 } from '@/lib/players';
+import { getHudSkin, HUD_SKIN_KEY } from '@/lib/hud-skins';
 import { PixelAvatar, TeamPlayersAvatar, type PlayerInfo } from '@/components/pixel-avatar';
+import { ScoreHud } from '@/components/score-hud';
+import { FlipCoinModal } from '@/components/flip-coin-modal';
+import { RulesModal } from '@/components/rules-modal';
+import { Podium } from '@/components/podium';
 import { WinRateRing } from '@/components/win-rate-ring';
 import { CharacterPicker, type PickerSlot } from '@/components/character-picker';
 import { GearPixel } from '@/components/gear-pixel';
 import { SkinReel } from '@/components/skin-reel';
 import { ShopModal } from '@/components/shop-modal';
 import { RegisterModal, type RosterAction } from '@/components/register-modal';
-import { Podium } from '@/components/podium';
-import { RulesModal } from '@/components/rules-modal';
 
 interface PlayerSlot {
   name: string; // ชื่อผู้เล่นที่เลือกจากรายชื่อที่ลงทะเบียนไว้ ('' = ยังไม่เลือก)
@@ -78,6 +81,15 @@ function rankBadgeClass(index: number): string {
   if (index === 1) return 'bg-gradient-to-br from-slate-300 to-slate-400 text-white shadow-slate-400/40';
   if (index === 2) return 'bg-gradient-to-br from-orange-300 to-amber-700 text-white shadow-orange-400/40';
   return 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400';
+}
+
+// ตัดเลขแต้มให้ไม่เกินจำนวนแต้มที่เลือก (เกมละกี่แต้ม): พิมพ์เกิน = ตัดที่เลขสูงสุด, ติดลบ = 0
+function clampScoreStr(raw: string, cap: number): string {
+  if (raw === '') return '';
+  const n = parseInt(raw, 10);
+  if (isNaN(n)) return '';
+  if (n <= 0) return '0';
+  return n > cap ? String(cap) : String(n);
 }
 
 type SoundKind = 'success' | 'error' | 'open' | 'clear' | 'select' | 'tick';
@@ -218,15 +230,24 @@ export default function Home() {
   const [scoreB, setScoreB] = useState('');
   const [matchDate, setMatchDate] = useState('');
 
+  // HUD สกอร์บอร์ดสด: สกินที่เลือก (5 แบบ — จำค่าใน localStorage)
+  const [hudSkinId, setHudSkinId] = useState('classic');
+  // จับเหรียญเสิร์ฟก่อน: idle = ยังไม่จับ / flipping = เหรียญกำลังหมุน / done = รู้ผลแล้ว
+  const [flipState, setFlipState] = useState<'idle' | 'flipping' | 'done'>('idle');
+  const [flipFace, setFlipFace] = useState<'A' | 'B'>('A'); // หน้าเหรียญที่โชว์ตอนนี้ (A = หัว, B = ก้อย)
+  const [serveTeam, setServeTeam] = useState<'A' | 'B' | null>(null); // ทีมที่ได้เสิร์ฟก่อน
+  const [flipOpen, setFlipOpen] = useState(false); // popup จับเหรียญ — เหรียญใหญ่เด้งกลางจอ
+  const flipTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [rulesOpen, setRulesOpen] = useState(false); // Modal กฎกติกา & วิธีได้เหรียญ
+  // โหมดการแสดงผลของจอ: 'portrait' = แนวตั้ง | 'landscape' = แนวนอน
+  const [disp, setDisp] = useState<'portrait' | 'landscape'>('portrait');
+  const dispManualRef = useRef(false); // เลือกเองแล้วจะไม่สลับตามการหมุนจออัตโนมัติ
+
   // UI state
   const [alertMsg, setAlertMsg] = useState<{ msg: string; isError: boolean } | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
-  const [rulesOpen, setRulesOpen] = useState(false); // Modal กฎกติกา & วิธีได้เหรียญ
   const [mounted, setMounted] = useState(false);
   const [soundMuted, setSoundMuted] = useState(false);
-  // โหมดการแสดงผลของจอ: 'portrait' = แนวตั้ง (คอลัมน์เดียว) | 'landscape' = แนวนอน (กว้าง ฟอร์ม+ตารางคู่กัน)
-  const [disp, setDisp] = useState<'portrait' | 'landscape'>('portrait');
-  const dispManualRef = useRef(false); // เคยเลือกเองหรือยัง — เลือกเองแล้วจะไม่สลับตามการหมุนจออัตโนมัติ
   const alertTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const exportableRef = useRef<HTMLDivElement>(null);
   const soundMutedRef = useRef(false);
@@ -259,33 +280,16 @@ export default function Home() {
     }
     // โหลดโปรไฟล์ผู้เล่นที่ลงทะเบียนไว้ (ชื่อ / เหรียญ / สกินรายบุคคล)
     setPlayers(loadPlayers());
+    // โหลดสกิน HUD ที่เลือกไว้ครั้งก่อน
+    try {
+      const savedHud = localStorage.getItem(HUD_SKIN_KEY);
+      if (savedHud) setHudSkinId(savedHud);
+    } catch {
+      // ข้าม
+    }
     return () => {
       if (alertTimer.current) clearTimeout(alertTimer.current);
-    };
-  }, []);
-
-  // โหมดจอ: โหลดค่าที่เคยเลือกไว้ — ถ้ายังไม่เคยเลือกเอง ให้สลับตามแนวจอจริงของเครื่องแบบเรียลไทม์
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem('badminton_display_mode');
-      if (saved === 'portrait' || saved === 'landscape') {
-        dispManualRef.current = true;
-        setDisp(saved);
-        return;
-      }
-    } catch {
-      // ไม่มี localStorage ใช้ค่าเริ่มต้น
-    }
-    const followOrientation = () => {
-      if (dispManualRef.current) return; // ผู้ใช้เลือกเองแล้ว ไม่สลับอัตโนมัติ
-      setDisp(window.innerWidth >= window.innerHeight ? 'landscape' : 'portrait');
-    };
-    followOrientation();
-    window.addEventListener('resize', followOrientation);
-    window.addEventListener('orientationchange', followOrientation);
-    return () => {
-      window.removeEventListener('resize', followOrientation);
-      window.removeEventListener('orientationchange', followOrientation);
+      if (flipTimerRef.current) clearInterval(flipTimerRef.current);
     };
   }, []);
 
@@ -298,6 +302,43 @@ export default function Home() {
       // บันทึกไม่ได้ก็ข้าม
     }
   }, [players, mounted]);
+
+  // เซฟสกิน HUD ทุกครั้งที่เปลี่ยน
+  useEffect(() => {
+    if (!mounted) return;
+    try {
+      localStorage.setItem(HUD_SKIN_KEY, hudSkinId);
+    } catch {
+      // บันทึกไม่ได้ก็ข้าม
+    }
+  }, [hudSkinId, mounted]);
+
+  // โหมดการแสดงผล: โหลดค่าที่เคยเลือกไว้ / ไม่มีก็ตามสัดส่วนจอจริง (สลับอัตโนมัติเมื่อหมุนจอ)
+  useEffect(() => {
+    function followOrientation() {
+      setDisp(window.innerWidth >= window.innerHeight ? 'landscape' : 'portrait');
+    }
+    try {
+      const saved = localStorage.getItem('badminton_display_mode');
+      if (saved === 'portrait' || saved === 'landscape') {
+        dispManualRef.current = true;
+        setDisp(saved);
+      } else {
+        followOrientation();
+      }
+    } catch {
+      followOrientation();
+    }
+    const onResize = () => {
+      if (!dispManualRef.current) followOrientation();
+    };
+    window.addEventListener('resize', onResize);
+    window.addEventListener('orientationchange', onResize);
+    return () => {
+      window.removeEventListener('resize', onResize);
+      window.removeEventListener('orientationchange', onResize);
+    };
+  }, []);
 
   // ===== ระบบเสียงเอฟเฟกต์ (Web Audio API — สังเคราะห์เสียงสด ไม่ต้องโหลดไฟล์) =====
   function getAudioCtx(): AudioContext | null {
@@ -389,7 +430,13 @@ export default function Home() {
     setTheme(resolvedTheme === 'dark' ? 'light' : 'dark');
   }
 
-  // เลือกโหมดจอ แนวตั้ง/แนวนอน — จำค่าที่เลือกไว้ใน localStorage เลือกเองแล้วไม่สลับตามการหมุนจออัตโนมัติ
+  // เลือกสกิน HUD (5 แบบ) — จำค่าไว้ใน localStorage
+  function pickHudSkin(id: string) {
+    setHudSkinId(id);
+    playSound('select');
+  }
+
+  // เปลี่ยนโหมดการแสดงผลของจอ (เลือกเองแล้วจะไม่สลับตามการหมุนจออัตโนมัติ)
   function setDisplayMode(mode: 'portrait' | 'landscape') {
     if (mode === disp) return;
     dispManualRef.current = true;
@@ -400,6 +447,32 @@ export default function Home() {
     } catch {
       // บันทึกไม่ได้ก็ข้าม
     }
+  }
+
+  // จับเหรียญเสิร์ฟก่อน: เปิด popup เหรียญใหญ่เด้งกลางจอ ~5 วินาที แล้วสุ่มผล — หัว = ทีม A, ก้อย = ทีม B
+  function flipCoin() {
+    if (flipState === 'flipping') return;
+    setFlipOpen(true); // เด้งเหรียญขึ้นบนจอเลย
+    playSound('select');
+    const result: 'A' | 'B' = Math.random() < 0.5 ? 'A' : 'B';
+    setFlipState('flipping');
+    let ticks = 0;
+    const total = 50; // 50 × 100ms = 5 วินาที — เหรียญเด้ง 5 รอบ หมุน 10 รอบพอดี (สปิน 0.5 วิ/รอบ)
+    if (flipTimerRef.current) clearInterval(flipTimerRef.current);
+    flipTimerRef.current = setInterval(() => {
+      ticks++;
+      if (ticks >= total) {
+        if (flipTimerRef.current) clearInterval(flipTimerRef.current);
+        flipTimerRef.current = null;
+        setFlipFace(result);
+        setServeTeam(result);
+        setFlipState('done');
+        playSound('success');
+        return;
+      }
+      if (ticks % 2 === 0) setFlipFace((f) => (f === 'A' ? 'B' : 'A'));
+      if (ticks % 4 === 0) playSound('tick');
+    }, 100);
   }
 
   function showAlert(msg: string, isError = true) {
@@ -579,6 +652,11 @@ export default function Home() {
       return showAlert('สกินตัวละครแต่ละคนต้องไม่ซ้ำกันในแมตช์เดียวกัน');
     if (isNaN(sA) || isNaN(sB) || sA < 0 || sB < 0) return showAlert('กรุณากรอกคะแนนให้ถูกต้อง');
     if (sA === sB) return showAlert('แบดมินตันไม่มีผลเสมอ กรุณาตรวจสอบคะแนน');
+    // แต้มที่กรอกห้ามเกินจำนวนแต้มที่เลือก (เกมละกี่แต้ม)
+    if (sA > scoreCap || sB > scoreCap)
+      return showAlert(
+        `แต้มห้ามเกิน ${scoreCap} — คุณเลือกเกมละ ${maxScore} แต้ม (กรอก ${sA}-${sB} ไม่ได้)`
+      );
 
     const playersA: PlayerInfo[] = isDoubles
       ? [
@@ -635,21 +713,23 @@ export default function Home() {
     setScoreB('');
     setMatchDate(todayISO()); // รีเซ็ตกลับเป็นวันนี้สำหรับแมตช์ถัดไป
 
-    // เหรียญรายบุคคล: ทีมชนะ +7 เหรียญ/คน (ชนะขาดได้ +10) • ทีมแพ้ +3 เหรียญ/คน
-    // ชนะขาด = ฝ่ายแพ้ได้แต้มต่ำกว่า 5 หรือคะแนนห่างกัน 15 แต้มขึ้นไป
+    // เหรียญรายบุคคล: ชนะ +7 / แพ้ +3 / ชนะขาด (แพ้ < 5 แต้ม หรือ ห่าง ≥ 15 แต้ม) ผู้ชนะได้ +10 แทน +7
     const split = isDoubles ? 2 : 1;
     const winnerNames = sA > sB ? names.slice(0, split) : names.slice(split);
     const loserNames = sA > sB ? names.slice(split) : names.slice(0, split);
-    const winScore = Math.max(sA, sB);
-    const loseScore = Math.min(sA, sB);
-    const coins = calcMatchCoins(winScore, loseScore);
+    const coins = calcMatchCoins(Math.max(sA, sB), Math.min(sA, sB));
     setPlayers((ps) => awardCoins(ps, winnerNames, loserNames, coins.winCoins, coins.loseCoins).players);
     showAlert(
       coins.crush
-        ? `บันทึกผลสำเร็จ! ชนะขาด ${winScore}-${loseScore} — ชนะ: ${winnerNames.join(', ')} +${coins.winCoins} เหรียญ • แพ้: ${loserNames.join(', ')} +${coins.loseCoins} เหรียญ`
+        ? `บันทึกผลสำเร็จ! ชนะขาด ${Math.max(sA, sB)}-${Math.min(sA, sB)} 🔥 ชนะ: ${winnerNames.join(', ')} +${coins.winCoins} เหรียญ • แพ้: ${loserNames.join(', ')} +${coins.loseCoins} เหรียญ`
         : `บันทึกผลสำเร็จ! ชนะ: ${winnerNames.join(', ')} +${coins.winCoins} เหรียญ • แพ้: ${loserNames.join(', ')} +${coins.loseCoins} เหรียญ`,
       false
     );
+
+    // รีเซ็ตผลจับเหรียญเสิร์ฟสำหรับแมตช์ถัดไป
+    setServeTeam(null);
+    setFlipState('idle');
+    setFlipFace('A');
   }
 
   async function downloadAsImage() {
@@ -724,6 +804,17 @@ export default function Home() {
     .filter((k) => k !== pickerSlot)
     .map((k) => skinIdBySlot[k]);
 
+  // แต้มสูงสุดของเกม (จากตัวเลือก "เกมละกี่แต้ม") — ตัวเลขที่กรอกห้ามเกินนี้
+  const scoreCap = parseInt(maxScore, 10) || 21;
+  // สกิน HUD ที่เลือก + ชื่อทีมสำหรับโชว์บน HUD
+  const hudSkin = getHudSkin(hudSkinId);
+  const hudTeamAName =
+    (isDoublesType ? [slotA1.name, slotA2.name] : [slotA1.name]).filter(Boolean).join(' / ') ||
+    'ทีม A';
+  const hudTeamBName =
+    (isDoublesType ? [slotB1.name, slotB2.name] : [slotB1.name]).filter(Boolean).join(' / ') ||
+    'ทีม B';
+
   // แผนที่: ชื่อทีม → รายชื่อผู้เล่น (ใช้แสดงอวตารในอันดับ/สรุป, แมตช์ล่าสุดมีน้ำหนักสุดท้าย)
   const teamPlayersMap: Record<string, PlayerInfo[]> = {};
   for (const m of matches) {
@@ -738,11 +829,11 @@ export default function Home() {
 
   return (
     <div
-      className="min-h-screen bg-gradient-to-br from-slate-100 via-gray-50 to-blue-50 text-gray-800 dark:from-slate-950 dark:via-gray-950 dark:to-blue-950 dark:text-gray-100"
+      className={`min-h-screen ${hudSkin.page}`}
       style={{ fontFamily: "'Noto Sans Thai', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif" }}
     >
       {/* ===== Navbar ===== */}
-      <nav className="sticky top-0 z-40 bg-gradient-to-r from-blue-800 via-blue-600 to-sky-500 text-white shadow-lg shadow-blue-900/20">
+      <nav className={`sticky top-0 z-40 ${hudSkin.nav}`}>
         <div className="max-w-7xl mx-auto px-4 py-3 flex flex-wrap justify-between items-center gap-2 sm:gap-3">
           <div className="flex items-center gap-3 min-w-0 w-full sm:w-auto justify-center sm:justify-start">
             <span
@@ -779,50 +870,43 @@ export default function Home() {
                 {mounted ? players.length : '–'}
               </span>
             </button>
-            {/* ปุ่มกฎกติกา & วิธีได้เหรียญ */}
+            {/* กฎกติกา & วิธีได้เหรียญ */}
             <button
               onClick={() => {
                 setRulesOpen(true);
                 playSound('open');
               }}
               aria-label="กฎกติกาและวิธีได้เหรียญ"
-              title="กฎกติกาและวิธีได้เหรียญ"
-              className="bg-white/10 hover:bg-white/20 border border-white/25 text-white px-3 py-2 rounded-xl font-semibold transition text-sm flex items-center justify-center gap-1.5"
+              title="กฎกติกาและวิธีได้เหรียญ — ชนะ +7 / ชนะขาด +10 / แพ้ +3"
+              className="bg-white/10 hover:bg-white/20 border border-white/25 text-white w-9 h-9 rounded-xl transition flex items-center justify-center text-sm"
             >
-              <i className="fa-solid fa-book-open"></i>
-              <span className="hidden sm:inline">กฎกติกา</span>
+              <i className="fa-solid fa-circle-question"></i>
             </button>
-            {/* สวิตช์โหมดจอ: แนวตั้ง / แนวนอน */}
+            {/* โหมดการแสดงผลของจอ: แนวตั้ง / แนวนอน */}
             <div
-              className="bg-white/10 border border-white/25 rounded-xl p-0.5 flex items-center shrink-0"
               role="group"
               aria-label="โหมดการแสดงผลของจอ"
+              className="flex items-center rounded-xl overflow-hidden border border-white/25 bg-white/5"
             >
               <button
                 onClick={() => setDisplayMode('portrait')}
                 aria-pressed={disp === 'portrait'}
-                title="โหมดแนวตั้ง — เรียงแถวเดียวแนวลง สำหรับจอแนวตั้ง/มือถือ"
-                className={`px-2.5 h-9 rounded-[10px] text-sm font-semibold transition flex items-center justify-center gap-1.5 cursor-pointer ${
-                  disp === 'portrait'
-                    ? 'bg-white text-blue-700 shadow'
-                    : 'text-white/80 hover:text-white hover:bg-white/10'
+                title="โหมดแนวตั้ง — เลย์เอาต์แคบแบบมือถือ"
+                className={`w-9 h-9 transition flex items-center justify-center text-sm cursor-pointer ${
+                  disp === 'portrait' ? 'bg-white/30 text-white' : 'hover:bg-white/15 text-white/80'
                 }`}
               >
                 <i className="fa-solid fa-mobile-screen-button"></i>
-                <span className="hidden md:inline">แนวตั้ง</span>
               </button>
               <button
                 onClick={() => setDisplayMode('landscape')}
                 aria-pressed={disp === 'landscape'}
-                title="โหมดแนวนอน — กว้าง ฟอร์มกับตารางอันดับอยู่คู่กัน สำหรับจอแนวนอน/แท็บเล็ต"
-                className={`px-2.5 h-9 rounded-[10px] text-sm font-semibold transition flex items-center justify-center gap-1.5 cursor-pointer ${
-                  disp === 'landscape'
-                    ? 'bg-white text-blue-700 shadow'
-                    : 'text-white/80 hover:text-white hover:bg-white/10'
+                title="โหมดแนวนอน — เลย์เอาต์กว้าง 3 คอลัมน์"
+                className={`w-9 h-9 transition flex items-center justify-center text-sm cursor-pointer ${
+                  disp === 'landscape' ? 'bg-white/30 text-white' : 'hover:bg-white/15 text-white/80'
                 }`}
               >
                 <i className="fa-solid fa-display"></i>
-                <span className="hidden md:inline">แนวนอน</span>
               </button>
             </div>
             {/* ปุ่มเปิด/ปิดเสียง */}
@@ -857,7 +941,7 @@ export default function Home() {
                 setModalOpen(true);
                 playSound('open');
               }}
-              className="bg-white text-blue-700 hover:bg-blue-50 px-3 py-2 rounded-xl font-bold transition text-sm shadow-md flex items-center gap-1.5"
+              className={`${hudSkin.btn} px-3 py-2 font-bold transition text-sm flex items-center gap-1.5`}
             >
               <i className="fa-solid fa-chart-pie"></i>
               <span className="hidden sm:inline">สรุปภาพรวม</span>
@@ -868,21 +952,21 @@ export default function Home() {
 
       <main
         className={`mx-auto px-4 py-6 grid grid-cols-1 gap-6 ${
-          disp === 'landscape' ? 'max-w-7xl sm:grid-cols-3' : 'max-w-lg'
+          disp === 'landscape' ? 'max-w-7xl lg:grid-cols-3' : 'max-w-lg'
         }`}
       >
         {/* ===== ฝั่งซ้าย: ฟอร์มกรอกข้อมูล ===== */}
         <section
-          className={`bg-white rounded-2xl shadow-sm ring-1 ring-gray-200/70 p-5 sm:p-6 dark:bg-gray-900 dark:ring-gray-700/60 ${
-            disp === 'landscape' ? 'sm:col-span-2' : ''
-          }`}
+          className={`${
+            disp === 'landscape' ? 'lg:col-span-2' : ''
+          } ${hudSkin.panel} p-5 sm:p-6`}
         >
           <div className="flex items-center gap-3 mb-5">
-            <span className="w-9 h-9 rounded-xl bg-blue-100 text-blue-600 dark:bg-blue-950 dark:text-blue-400 flex items-center justify-center shrink-0">
+            <span className={`w-9 h-9 ${hudSkin.panelIcon} flex items-center justify-center shrink-0`}>
               <i className="fa-solid fa-pen-to-square text-sm"></i>
             </span>
             <div>
-              <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100 leading-tight">
+              <h2 className={`${hudSkin.heading} text-lg font-bold leading-tight`}>
                 บันทึกผลการแข่งขัน
               </h2>
               <p className="text-xs text-gray-400">
@@ -890,6 +974,21 @@ export default function Home() {
               </p>
             </div>
           </div>
+
+          {/* ===== HUD สกอร์บอร์ดสด (เลือกสกินได้ 5 แบบ) + จับเหรียญเสิร์ฟก่อน ===== */}
+          <ScoreHud
+            skin={hudSkin}
+            teamAName={hudTeamAName}
+            teamBName={hudTeamBName}
+            scoreA={scoreA}
+            scoreB={scoreB}
+            maxScore={maxScore}
+            serveTeam={serveTeam}
+            flipState={flipState}
+            flipFace={flipFace}
+            onFlip={flipCoin}
+            onPickSkin={pickHudSkin}
+          />
 
           {/* ข้อมูลแมตช์ */}
           <div className={`grid grid-cols-1 gap-4 mb-5 ${disp === 'landscape' ? 'sm:grid-cols-3' : ''}`}>
@@ -935,13 +1034,18 @@ export default function Home() {
           </div>
 
           {/* คะแนนสองทีม */}
-          <div className={`grid grid-cols-1 gap-4 mb-6 ${disp === 'landscape' ? 'sm:grid-cols-2' : ''}`}>
+          <div className={`grid grid-cols-1 gap-4 mb-6 ${disp === 'landscape' ? 'md:grid-cols-2' : ''}`}>
             <div className="bg-blue-50/60 ring-1 ring-blue-100 rounded-2xl p-4 dark:bg-blue-950/40 dark:ring-blue-900/60">
               <div className="flex items-center justify-center gap-2 mb-3">
                 <span className="w-6 h-6 rounded-full bg-blue-600 text-white text-xs font-extrabold flex items-center justify-center shadow">
                   A
                 </span>
                 <h3 className="font-bold text-blue-800 dark:text-blue-300">ทีม A</h3>
+                {serveTeam === 'A' && (
+                  <span className="text-[10px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 rounded-full px-2 py-0.5 flex items-center gap-1">
+                    <i className="fa-solid fa-table-tennis-paddle-ball"></i>เสิร์ฟก่อน
+                  </span>
+                )}
                 {isDoublesType && (
                   <span className="text-[10px] font-bold bg-blue-600/10 text-blue-600 dark:text-blue-300 rounded-full px-2 py-0.5">
                     เล่นคู่
@@ -979,14 +1083,15 @@ export default function Home() {
                 )}
               </div>
               <label htmlFor="scoreA" className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1 mt-3">
-                แต้มที่ได้
+                แต้มที่ได้ (ห้ามเกิน {maxScore})
               </label>
               <input
                 type="number"
                 id="scoreA"
                 min={0}
+                max={scoreCap}
                 value={scoreA}
-                onChange={(e) => setScoreA(e.target.value)}
+                onChange={(e) => setScoreA(clampScoreStr(e.target.value, scoreCap))}
                 className="w-full bg-white border border-blue-200 rounded-xl px-3 py-2 text-center text-2xl font-extrabold text-blue-700 outline-none transition focus:ring-2 focus:ring-blue-400 dark:bg-blue-950/50 dark:border-blue-800 dark:text-blue-300"
                 placeholder="0"
               />
@@ -998,6 +1103,11 @@ export default function Home() {
                   B
                 </span>
                 <h3 className="font-bold text-rose-800 dark:text-rose-300">ทีม B</h3>
+                {serveTeam === 'B' && (
+                  <span className="text-[10px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 rounded-full px-2 py-0.5 flex items-center gap-1">
+                    <i className="fa-solid fa-table-tennis-paddle-ball"></i>เสิร์ฟก่อน
+                  </span>
+                )}
                 {isDoublesType && (
                   <span className="text-[10px] font-bold bg-rose-600/10 text-rose-600 dark:text-rose-300 rounded-full px-2 py-0.5">
                     เล่นคู่
@@ -1035,14 +1145,15 @@ export default function Home() {
                 )}
               </div>
               <label htmlFor="scoreB" className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1 mt-3">
-                แต้มที่ได้
+                แต้มที่ได้ (ห้ามเกิน {maxScore})
               </label>
               <input
                 type="number"
                 id="scoreB"
                 min={0}
+                max={scoreCap}
                 value={scoreB}
-                onChange={(e) => setScoreB(e.target.value)}
+                onChange={(e) => setScoreB(clampScoreStr(e.target.value, scoreCap))}
                 className="w-full bg-white border border-rose-200 rounded-xl px-3 py-2 text-center text-2xl font-extrabold text-rose-700 outline-none transition focus:ring-2 focus:ring-rose-400 dark:bg-rose-950/40 dark:border-rose-900 dark:text-rose-300"
                 placeholder="0"
               />
@@ -1067,7 +1178,7 @@ export default function Home() {
             </div>
             <button
               onClick={saveMatch}
-              className="w-full sm:w-auto bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white px-7 py-2.5 rounded-xl font-bold shadow-lg shadow-green-500/25 transition flex items-center justify-center gap-2 active:scale-[0.98]"
+              className={`${hudSkin.btn} w-full sm:w-auto px-7 py-2.5 transition flex items-center justify-center gap-2 active:scale-[0.98]`}
             >
               <i className="fa-solid fa-floppy-disk"></i> บันทึกผล
             </button>
@@ -1089,13 +1200,13 @@ export default function Home() {
         </section>
 
         {/* ===== ฝั่งขวา: ตารางอันดับ ===== */}
-        <aside className="bg-white rounded-2xl shadow-sm ring-1 ring-gray-200/70 p-5 sm:p-6 flex flex-col dark:bg-gray-900 dark:ring-gray-700/60">
+        <aside className={`${hudSkin.panel} p-5 sm:p-6 flex flex-col`}>
           <div className="flex items-center gap-3 mb-5">
-            <span className="w-9 h-9 rounded-xl bg-amber-100 text-amber-500 dark:bg-amber-950 dark:text-amber-400 flex items-center justify-center shrink-0">
+            <span className={`w-9 h-9 ${hudSkin.panelIcon} flex items-center justify-center shrink-0`}>
               <i className="fa-solid fa-trophy text-sm"></i>
             </span>
             <div>
-              <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100 leading-tight">ตารางอันดับ</h2>
+              <h2 className={`${hudSkin.heading} text-lg font-bold leading-tight`}>ตารางอันดับ</h2>
               <p className="text-xs text-gray-400">จัดอันดับตาม Win Rate แบบเรียลไทม์</p>
             </div>
           </div>
@@ -1113,7 +1224,7 @@ export default function Home() {
               {rankedTeams.map((team, index) => (
                 <li
                   key={team.name}
-                  className="flex items-center gap-3 p-3 rounded-xl ring-1 ring-gray-100 hover:ring-blue-200 hover:bg-blue-50/40 transition dark:ring-gray-800 dark:hover:ring-blue-800 dark:hover:bg-blue-950/40"
+                  className="flex items-center gap-3 p-3 rounded-xl bg-white ring-1 ring-gray-100 hover:ring-blue-200 hover:bg-blue-50/40 transition dark:bg-gray-900/30 dark:ring-gray-800 dark:hover:ring-blue-800 dark:hover:bg-blue-950/40"
                 >
                   <span
                     className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-extrabold shrink-0 shadow ${rankBadgeClass(index)}`}
@@ -1157,11 +1268,7 @@ export default function Home() {
           modalOpen ? 'flex' : 'hidden'
         }`}
       >
-        <div
-          className={`bg-white rounded-2xl shadow-2xl w-full max-h-[90vh] flex flex-col overflow-hidden dark:bg-gray-900 ${
-            disp === 'landscape' ? 'max-w-5xl' : 'max-w-3xl'
-          }`}
-        >
+        <div className={`${hudSkin.modalCard} w-full ${disp === 'landscape' ? 'max-w-5xl' : 'max-w-3xl'} max-h-[90vh] flex flex-col overflow-hidden`}>
           {/* หัวโมดอล */}
           <div className="flex justify-between items-center px-5 py-4 border-b border-gray-100 bg-gradient-to-r from-blue-50 via-white to-white dark:border-gray-800 dark:from-gray-800 dark:via-gray-900 dark:to-gray-900">
             <div className="flex items-center gap-3 min-w-0">
@@ -1178,7 +1285,7 @@ export default function Home() {
             <div className="flex items-center gap-2 shrink-0">
               <button
                 onClick={downloadAsImage}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl font-semibold text-sm transition shadow-md shadow-blue-600/20"
+                className={`${hudSkin.btn} px-4 py-2 font-semibold text-sm transition`}
               >
                 <i className="fa-solid fa-camera mr-1.5"></i>เซฟเป็นรูป
               </button>
@@ -1199,22 +1306,7 @@ export default function Home() {
             className="overflow-y-auto p-5 space-y-8 flex-grow bg-white dark:bg-gray-900"
           >
             {/* แท่นรับเหรียญรางวัล อันดับ 1-3 */}
-            <section>
-              <h3 className="text-base font-bold text-gray-700 dark:text-gray-200 mb-4 flex items-center gap-2">
-                <i className="fa-solid fa-trophy text-amber-500"></i>แท่นรับเหรียญรางวัล — อันดับ 1-3
-                <span className="text-xs font-medium text-gray-400 dark:text-gray-500">• เรียงตาม Win Rate</span>
-              </h3>
-              {rankedTeams.length === 0 ? (
-                <div className="text-center py-10 text-gray-400 border-2 border-dashed border-gray-200 rounded-2xl dark:border-gray-700">
-                  <i className="fa-solid fa-trophy text-2xl mb-2 block"></i>
-                  ยังไม่มีข้อมูล — บันทึกผลแข่งเพื่อขึ้นแท่นรับเหรียญ
-                </div>
-              ) : (
-                <div className="bg-amber-50/80 ring-1 ring-gray-200 rounded-2xl p-5 dark:bg-gray-800/60 dark:ring-gray-700">
-                  <Podium teams={rankedTeams.slice(0, 3)} teamPlayersMap={teamPlayersMap} />
-                </div>
-              )}
-            </section>
+            <Podium teams={summaryTeams} playersMap={teamPlayersMap} />
 
             {/* สถิติแต่ละทีม */}
             <section>
@@ -1222,14 +1314,7 @@ export default function Home() {
                 <i className="fa-solid fa-users text-blue-500"></i>สถิติแต่ละทีม
                 <span className="text-xs font-medium text-gray-400 dark:text-gray-500">• วงกลม Win Rate</span>
               </h3>
-              <div
-                id="teamStatsCards"
-                className={`grid gap-4 ${
-                  disp === 'landscape'
-                    ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'
-                    : 'grid-cols-1 sm:grid-cols-2'
-                }`}
-              >
+              <div id="teamStatsCards" className={`grid grid-cols-1 gap-4 ${disp === 'landscape' ? 'md:grid-cols-2 lg:grid-cols-3' : 'sm:grid-cols-2'}`}>
                 {summaryTeams.length === 0 ? (
                   <div className="col-span-full text-center py-10 text-gray-400 border-2 border-dashed border-gray-200 rounded-2xl dark:border-gray-700">
                     <i className="fa-solid fa-chart-simple text-2xl mb-2 block"></i>
@@ -1405,14 +1490,12 @@ export default function Home() {
         onTick={() => playSound('tick')}
       />
 
-      {/* ===== Modal กฎกติกา & วิธีได้เหรียญ ===== */}
-      <RulesModal open={rulesOpen} onClose={() => setRulesOpen(false)} />
-
       {/* ===== Modal ลงทะเบียนผู้เล่น (ชื่ออย่างเดียว) ===== */}
       <RegisterModal
         key={registerOpen ? 'register-open' : 'register-closed'}
         open={registerOpen}
         players={players}
+        skin={hudSkin}
         onRegister={handleRegister}
         onPlayerAction={rosterAction}
         onClose={() => {
@@ -1430,6 +1513,21 @@ export default function Home() {
         unlockedIds={shopFor ? players.find((p) => p.name === shopFor)?.owned ?? [] : []}
         onBuy={buyGear}
         onClose={() => setShopFor(null)}
+      />
+
+      {/* ===== Modal กฎกติกา & วิธีได้เหรียญ ===== */}
+      <RulesModal open={rulesOpen} onClose={() => setRulesOpen(false)} skin={hudSkin} />
+
+      {/* ===== Popup จับเหรียญเสิร์ฟก่อน — เหรียญใหญ่เด้งกลางจอ ===== */}
+      <FlipCoinModal
+        open={flipOpen}
+        state={flipState === 'idle' ? 'flipping' : flipState}
+        face={flipFace}
+        teamAName={hudTeamAName}
+        teamBName={hudTeamBName}
+        skin={hudSkin}
+        onFlipAgain={flipCoin}
+        onClose={() => setFlipOpen(false)}
       />
     </div>
   );

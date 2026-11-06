@@ -154,7 +154,7 @@ export function ShopModal({
         <div className="px-5 py-3.5 border-t border-gray-100 bg-gray-50 dark:border-gray-800 dark:bg-gray-800/60 flex items-center justify-between gap-3">
           <p className="text-[11px] text-gray-400 hidden sm:block">
             <i className="fa-solid fa-circle-info mr-1"></i>
-            เก็บเหรียญจากการบันทึกผลแข่ง (รายบุคคล): ชนะ +7 • แพ้ +3 • ชนะขาด +10 เหรียญ
+            เก็บเหรียญจากการบันทึกผลแข่ง (รายบุคคล): ชนะ +3 เหรียญ • แพ้ +1 เหรียญ
           </p>
           <button
             onClick={onClose}

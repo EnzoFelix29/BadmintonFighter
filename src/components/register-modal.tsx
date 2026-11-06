@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import type { PlayerProfile } from '@/lib/players';
+import type { HudSkin } from '@/lib/hud-skins';
 import { getSkin } from '@/lib/characters';
 import { getGear } from '@/lib/gear';
 import { GearPixel } from './gear-pixel';
@@ -15,12 +16,14 @@ export type RosterAction = 'shop' | 'delete';
 export function RegisterModal({
   open,
   players,
+  skin,
   onRegister,
   onPlayerAction,
   onClose,
 }: {
   open: boolean;
   players: PlayerProfile[];
+  skin: HudSkin; // สกิน HUD ปัจจุบัน — ธีมกรอบโมดอลตามสกินทั้งหน้า
   onRegister: (name: string) => string; // คืนข้อความ error ('' = สำเร็จ)
   onPlayerAction: (name: string, action: RosterAction) => void;
   onClose: () => void;
@@ -49,7 +52,7 @@ export function RegisterModal({
       onClick={onClose}
     >
       <div
-        className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden ring-1 ring-gray-200/70 dark:ring-gray-700/60"
+        className={`${skin.modalCard} w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* หัวโมดอล */}

@@ -120,3 +120,101 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* ===== เหรียญจับเสิร์ฟก่อน (flip coin) ===== */
+@keyframes coin-flip {
+  0% {
+    transform: translateY(0) rotateX(0deg) scale(1);
+  }
+  25% {
+    transform: translateY(-12px) rotateX(360deg) scale(1.08);
+  }
+  50% {
+    transform: translateY(0) rotateX(720deg) scale(1);
+  }
+  75% {
+    transform: translateY(-8px) rotateX(1080deg) scale(1.05);
+  }
+  100% {
+    transform: translateY(0) rotateX(1440deg) scale(1);
+  }
+}
+.animate-coinflip {
+  animation: coin-flip 0.45s linear infinite;
+}
+
+/* เหรียญนิ่งแล้วเด้งตอนรู้ผล */
+@keyframes coin-pop {
+  0% {
+    transform: scale(0.5);
+  }
+  60% {
+    transform: scale(1.25);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+.animate-coinpop {
+  animation: coin-pop 0.35s ease-out;
+}
+
+/* ===== Popup จับเหรียญ: เหรียญใหญ่เด้งกลางจอ ===== */
+/* เหรียญเด้งขึ้น-ลงแบบโค้งพาราโบลา + เด้งตามแรงเมื่อตกถึงพื้น */
+@keyframes coin-bounce {
+  0% {
+    transform: translateY(0) scale(1);
+  }
+  38% {
+    transform: translateY(-76px) scale(1.1);
+  }
+  72% {
+    transform: translateY(0) scale(1);
+  }
+  86% {
+    transform: translateY(-24px) scale(1.04);
+  }
+  94%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+}
+.animate-coinbounce {
+  animation: coin-bounce 1s cubic-bezier(0.33, 0.66, 0.66, 1) infinite;
+}
+
+/* เหรียญหมุนรอบแกนตั้ง (มุม isometric — เหรียญคว่ำ/หงายสลับ) เร็ว 2 รอบ/วินาที
+   สปิน 0.5 วิ/รอบ × เหวี่ยง 5 วิ = หมุนครบ 10 รอบพอดี จบที่ 0° ไม่กระตุก */
+@keyframes coin-isospin {
+  from {
+    transform: rotateY(0deg);
+  }
+  to {
+    transform: rotateY(360deg);
+  }
+}
+.animate-coinisospin {
+  animation: coin-isospin 0.5s linear infinite;
+}
+
+/* เงาใต้เหรียญ: หดเมื่อเหรียญลอยสูง ขยายตอนติดพื้น */
+@keyframes coin-shadow {
+  0%,
+  72%,
+  94%,
+  100% {
+    transform: scaleX(1);
+    opacity: 0.35;
+  }
+  38% {
+    transform: scaleX(0.5);
+    opacity: 0.12;
+  }
+  86% {
+    transform: scaleX(0.78);
+    opacity: 0.25;
+  }
+}
+.animate-coinshadow {
+  animation: coin-shadow 1s ease-in-out infinite;
+}

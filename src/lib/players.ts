@@ -1,6 +1,6 @@
 // ============================================================
 // ระบบสมาชิกผู้เล่น — ลงทะเบียนด้วยชื่ออย่างเดียว ครั้งต่อไปเลือกชื่อจากช่องผู้เล่นได้เลย
-// แต่ละคนมีเหรียญรายบุคคล (ชนะ +7 / แพ้ +3, ชนะขาด +10) + สกินที่ตั้งค่าไว้
+// แต่ละคนมีเหรียญรายบุคคล (ชนะ +7 / แพ้ +3 / ชนะขาด +10) + สกินที่ตั้งค่าไว้
 // เก็บใน localStorage key: badminton_players
 // ============================================================
 import { SKINS } from './characters';
@@ -17,18 +17,18 @@ export interface PlayerProfile {
 
 const KEY = 'badminton_players';
 
-export const WIN_COINS = 7; // เหรียญที่ได้เมื่อชนะปกติ (รายบุคคล)
+export const WIN_COINS = 7; // เหรียญที่ได้เมื่อชนะ (รายบุคคล)
 export const LOSE_COINS = 3; // เหรียญที่ได้เมื่อแพ้ (รายบุคคล)
-export const CRUSH_WIN_COINS = 10; // เหรียญที่ได้เมื่อ "ชนะขาด" (ใช้แทนชนะปกติ)
-export const CRUSH_LOSER_BELOW = 5; // ชนะขาด: ฝ่ายแพ้ได้แต้มต่ำกว่า 5
-export const CRUSH_GAP_MIN = 15; // ชนะขาด: คะแนนห่างกันตั้งแต่ 15 แต้มขึ้นไป
+export const CRUSH_WIN_COINS = 10; // เหรียญพิเศษเมื่อ “ชนะขาด” — ผู้ชนะได้แทน +7
+export const CRUSH_LOSER_BELOW = 5; // ทีมแพ้ได้ต่ำกว่า 5 แต้ม = ชนะขาด
+export const CRUSH_GAP_MIN = 15; // ชนะด้วยผลต่าง 15 แต้มขึ้นไป = ชนะขาด
 
-// เช็ค "ชนะขาด" — ฝ่ายแพ้ได้แต้มต่ำกว่า 5 หรือคะแนนห่างกัน 15 แต้มขึ้นไป
+// เช็คว่าเป็นการ “ชนะขาด” หรือไม่: ทีมแพ้ได้ < 5 แต้ม หรือ ผลต่าง ≥ 15 แต้ม
 export function isCrushWin(winnerScore: number, loserScore: number): boolean {
   return loserScore < CRUSH_LOSER_BELOW || winnerScore - loserScore >= CRUSH_GAP_MIN;
 }
 
-// คำนวณเหรียญของแมตช์: ชนะปกติ +7 / ชนะขาด +10 / แพ้ +3
+// คำนวณเหรียญของแมตช์: ชนะ +7 / แพ้ +3 / ถ้าชนะขาด ผู้ชนะได้ +10 แทน +7
 export function calcMatchCoins(
   winnerScore: number,
   loserScore: number
@@ -113,7 +113,7 @@ export function updateProfile(
   return players.map((p) => (p.name === name ? { ...p, ...patch } : p));
 }
 
-// จ่ายเหรียญรายบุคคลหลังจบแมตช์ (ค่าเหรียญมาจาก calcMatchCoins)
+// จ่ายเหรียญรายบุคคลหลังจบแมตช์: ทีมชนะ +7/คน (ชนะขาด +10/คน), ทีมแพ้ +3/คน
 export function awardCoins(
   players: PlayerProfile[],
   winnerNames: string[],
