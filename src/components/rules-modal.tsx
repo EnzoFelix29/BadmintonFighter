@@ -101,6 +101,18 @@ export function RulesModal({
               (กดเหวี่ยงใหม่ได้เสมอ)
             </div>
           </section>
+
+          <section>
+            <h3 className="font-bold text-gray-700 dark:text-gray-200 mb-2 flex items-center gap-2">
+              <i className="fa-solid fa-utensils text-amber-500"></i>สุ่มเมนูอาหารหลังตีแบต (ลูกเล่น)
+            </h3>
+            <div className="bg-amber-50 ring-1 ring-amber-100 rounded-xl px-3 py-2.5 text-gray-700 dark:bg-amber-950/40 dark:ring-amber-900 dark:text-gray-200">
+              บันทึกผลแข่งเสร็จ ระบบจะเปิด <b>สล็อตสุ่มเมนูอาหาร</b> เด้งกลางจอให้เลย (หรือกดปุ่ม
+              <b>“สุ่มเมนูอาหาร”</b> บน HUD เองได้) — มี 6 เมนู ออกตามโอกาส: ข้าวต้ม ข้างทาง
+              <b>45%</b> • ชาบู ชาใจ <b>15%</b> • สเต็ก ลุงวอ <b>15%</b> • ซูชิ ปิ๊แมว <b>10%</b> •
+              ส้มตำ ระยำใจ <b>10%</b> • IRON GRILL ริวจิตสัมผัส <b>5%</b>
+            </div>
+          </section>
         </div>
 
         {/* ท้ายโมดอล */}

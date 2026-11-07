@@ -2,6 +2,7 @@
 
 import { HUD_SKINS, type HudSkin } from '@/lib/hud-skins';
 import { PixelCoinFace } from '@/components/pixel-coin';
+import { PixelFoodArt } from '@/components/pixel-food';
 
 // ===== HUD สกอร์บอร์ดสด =====
 // มิเรอร์คะแนนที่กรอกในฟอร์มแบบเรียลไทม์ + ป้ายเกมละกี่แต้ม + ผลจับเหรียญเสิร์ฟก่อน
@@ -17,6 +18,7 @@ export function ScoreHud({
   flipState,
   flipFace,
   onFlip,
+  onFoodRoll,
   onPickSkin,
 }: {
   skin: HudSkin;
@@ -29,6 +31,7 @@ export function ScoreHud({
   flipState: 'idle' | 'flipping' | 'done';
   flipFace: 'A' | 'B';
   onFlip: () => void;
+  onFoodRoll: () => void; // สุ่มเมนูอาหารหลังตีแบต (popup สล็อตกาชาปอง)
   onPickSkin: (id: string) => void;
 }) {
   const a = scoreA === '' ? '0' : scoreA;
@@ -130,6 +133,18 @@ export function ScoreHud({
               : flipState === 'done'
                 ? 'เหวี่ยงใหม่'
                 : 'จับเหรียญเสิร์ฟก่อน'}
+          </button>
+          {/* ปุ่มสุ่มเมนูอาหารหลังตีแบต — สล็อตกาชาปอง 6 เมนูเด้งกลางจอ */}
+          <button
+            type="button"
+            onClick={onFoodRoll}
+            title="สุ่มเมนูอาหารหลังตีแบต — สล็อต 6 เมนูตามโอกาส 45/15/15/10/10/5 (เด้งกลางจอ)"
+            className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition active:scale-95 cursor-pointer ${skin.flipBtn}`}
+          >
+            <span aria-hidden="true" className="w-7 h-7 flex items-center justify-center">
+              <PixelFoodArt menu="congee" className="h-full w-full" />
+            </span>
+            สุ่มเมนูอาหาร
           </button>
         </div>
       </div>

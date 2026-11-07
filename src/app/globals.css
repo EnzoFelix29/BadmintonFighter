@@ -218,3 +218,34 @@
 .animate-coinshadow {
   animation: coin-shadow 1s ease-in-out infinite;
 }
+
+/* ===== ลูกเล่นสุ่มเมนูอาหารหลังตีแบต (สล็อตกาชาปอง) ===== */
+/* เด้งผลรู้ผลเมนู */
+@keyframes food-pop {
+  0% {
+    transform: scale(0.5);
+  }
+  60% {
+    transform: scale(1.22);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+.animate-foodpop {
+  animation: food-pop 0.4s ease-out;
+}
+
+/* กะพริบแบบสล็อตขณะกำลังวนหารูป */
+@keyframes food-flicker {
+  0%,
+  100% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(1.3);
+  }
+}
+.animate-foodflicker {
+  animation: food-flicker 0.36s linear infinite;
+}

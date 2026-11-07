@@ -18,6 +18,8 @@ import { getHudSkin, HUD_SKIN_KEY } from '@/lib/hud-skins';
 import { PixelAvatar, TeamPlayersAvatar, type PlayerInfo } from '@/components/pixel-avatar';
 import { ScoreHud } from '@/components/score-hud';
 import { FlipCoinModal } from '@/components/flip-coin-modal';
+import { FoodRouletteModal } from '@/components/food-roulette-modal';
+import { FOOD_MENUS, pickFoodMenu, type FoodMenu, type FoodMenuId } from '@/lib/food-menus';
 import { RulesModal } from '@/components/rules-modal';
 import { Podium } from '@/components/podium';
 import { WinRateRing } from '@/components/win-rate-ring';
@@ -238,6 +240,12 @@ export default function Home() {
   const [serveTeam, setServeTeam] = useState<'A' | 'B' | null>(null); // ทีมที่ได้เสิร์ฟก่อน
   const [flipOpen, setFlipOpen] = useState(false); // popup จับเหรียญ — เหรียญใหญ่เด้งกลางจอ
   const flipTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // ลูกเล่นสุ่มเมนูอาหารหลังตีแบต — สล็อตกาชาปอง 6 เมนู
+  const [foodOpen, setFoodOpen] = useState(false);
+  const [foodState, setFoodState] = useState<'rolling' | 'done'>('rolling');
+  const [foodDisplay, setFoodDisplay] = useState<FoodMenuId>('congee'); // เมนูที่โชว์ในช่องสล็อตขณะวน
+  const [foodResult, setFoodResult] = useState<FoodMenu | null>(null);
+  const foodTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [rulesOpen, setRulesOpen] = useState(false); // Modal กฎกติกา & วิธีได้เหรียญ
   // โหมดการแสดงผลของจอ: 'portrait' = แนวตั้ง | 'landscape' = แนวนอน
   const [disp, setDisp] = useState<'portrait' | 'landscape'>('portrait');
@@ -290,6 +298,7 @@ export default function Home() {
     return () => {
       if (alertTimer.current) clearTimeout(alertTimer.current);
       if (flipTimerRef.current) clearInterval(flipTimerRef.current);
+      if (foodTimerRef.current) clearInterval(foodTimerRef.current);
     };
   }, []);
 
@@ -473,6 +482,33 @@ export default function Home() {
       if (ticks % 2 === 0) setFlipFace((f) => (f === 'A' ? 'B' : 'A'));
       if (ticks % 4 === 0) playSound('tick');
     }, 100);
+  }
+
+  // ลูกเล่นสุ่มเมนูอาหารหลังตีแบต: สล็อตวนรูป ~3.2 วิ แล้วเด้งผลตามโอกาส (45/15/15/10/10/5)
+  function rollFood() {
+    if (foodOpen && foodState === 'rolling') return; // กันกดซ้ำขณะกำลังสุ่ม (popup เปิดอยู่เท่านั้น)
+    setFoodOpen(true);
+    playSound('select');
+    const result = pickFoodMenu();
+    setFoodState('rolling');
+    setFoodResult(null);
+    let ticks = 0;
+    const total = 40; // 40 × 80ms ≈ 3.2 วินาที — วนรูปสล็อตจนช้าลงแล้วเด้งผล
+    if (foodTimerRef.current) clearInterval(foodTimerRef.current);
+    foodTimerRef.current = setInterval(() => {
+      ticks++;
+      if (ticks >= total) {
+        if (foodTimerRef.current) clearInterval(foodTimerRef.current);
+        foodTimerRef.current = null;
+        setFoodDisplay(result.id);
+        setFoodResult(result);
+        setFoodState('done');
+        playSound('success');
+        return;
+      }
+      setFoodDisplay(FOOD_MENUS[ticks % FOOD_MENUS.length].id); // วนรูปสล็อตทีละเมนู
+      if (ticks % 2 === 0) playSound('tick');
+    }, 80);
   }
 
   function showAlert(msg: string, isError = true) {
@@ -725,6 +761,7 @@ export default function Home() {
         : `บันทึกผลสำเร็จ! ชนะ: ${winnerNames.join(', ')} +${coins.winCoins} เหรียญ • แพ้: ${loserNames.join(', ')} +${coins.loseCoins} เหรียญ`,
       false
     );
+    // (ไม่สุ่มเมนูอาหารอัตโนมัติหลังบันทึกผล — กดปุ่มสุ่มเมนูบน HUD เองเมื่อไหร่ก็ได้)
 
     // รีเซ็ตผลจับเหรียญเสิร์ฟสำหรับแมตช์ถัดไป
     setServeTeam(null);
@@ -987,6 +1024,7 @@ export default function Home() {
             flipState={flipState}
             flipFace={flipFace}
             onFlip={flipCoin}
+            onFoodRoll={rollFood}
             onPickSkin={pickHudSkin}
           />
 
@@ -1528,6 +1566,17 @@ export default function Home() {
         skin={hudSkin}
         onFlipAgain={flipCoin}
         onClose={() => setFlipOpen(false)}
+      />
+
+      {/* ===== Popup สุ่มเมนูอาหารหลังตีแบต — สล็อตกาชาปอง 6 เมนู ===== */}
+      <FoodRouletteModal
+        open={foodOpen}
+        state={foodState}
+        display={foodDisplay}
+        result={foodResult}
+        skin={hudSkin}
+        onRollAgain={rollFood}
+        onClose={() => setFoodOpen(false)}
       />
     </div>
   );
