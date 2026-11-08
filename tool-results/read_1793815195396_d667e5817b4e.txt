@@ -1,0 +1,777 @@
+     1→'use client';
+     2→
+     3→import { useEffect, useRef, useState } from 'react';
+     4→import { useTheme } from 'next-themes';
+     5→
+     6→interface Match {
+     7→  id: number;
+     8→  court: string;
+     9→  type: string;
+    10→  teamA: string;
+    11→  teamB: string;
+    12→  scoreA: number;
+    13→  scoreB: number;
+    14→  maxScore: string;
+    15→  date?: string;
+    16→}
+    17→
+    18→interface TeamStat {
+    19→  name: string;
+    20→  played: number;
+    21→  win: number;
+    22→  lose: number;
+    23→}
+    24→
+    25→interface RankedTeam extends TeamStat {
+    26→  winRate: number;
+    27→}
+    28→
+    29→// วันที่วันนี้ตามเวลาท้องถิ่น (รูปแบบ yyyy-mm-dd สำหรับ date input)
+    30→function todayISO(): string {
+    31→  const d = new Date();
+    32→  const y = d.getFullYear();
+    33→  const m = String(d.getMonth() + 1).padStart(2, '0');
+    34→  const day = String(d.getDate()).padStart(2, '0');
+    35→  return `${y}-${m}-${day}`;
+    36→}
+    37→
+    38→// แปลงเป็นรูปแบบไทย ด/ด/ดดด พ.ศ.
+    39→function formatThaiDate(iso?: string): string {
+    40→  if (!iso) return '-';
+    41→  const parts = iso.split('-');
+    42→  if (parts.length !== 3) return iso;
+    43→  const [y, m, d] = parts.map(Number);
+    44→  if (!y || !m || !d) return iso;
+    45→  return `${d}/${m}/${y + 543}`;
+    46→}
+    47→
+    48→// สีตราอันดับ: ทอง / เงิน / ทองแดง / ธรรมดา
+    49→function rankBadgeClass(index: number): string {
+    50→  if (index === 0) return 'bg-gradient-to-br from-amber-300 to-yellow-500 text-white shadow-amber-400/40';
+    51→  if (index === 1) return 'bg-gradient-to-br from-slate-300 to-slate-400 text-white shadow-slate-400/40';
+    52→  if (index === 2) return 'bg-gradient-to-br from-orange-300 to-amber-700 text-white shadow-orange-400/40';
+    53→  return 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400';
+    54→}
+    55→
+    56→type SoundKind = 'success' | 'error' | 'open' | 'clear';
+    57→
+    58→export default function Home() {
+    59→  const [matches, setMatches] = useState<Match[]>([]);
+    60→  const [teamStats, setTeamStats] = useState<Record<string, TeamStat>>({});
+    61→
+    62→  // ฟอร์มกรอกข้อมูล
+    63→  const [court, setCourt] = useState('');
+    64→  const [type, setType] = useState('เดี่ยว');
+    65→  const [maxScore, setMaxScore] = useState('21');
+    66→  const [teamA, setTeamA] = useState('');
+    67→  const [teamB, setTeamB] = useState('');
+    68→  const [scoreA, setScoreA] = useState('');
+    69→  const [scoreB, setScoreB] = useState('');
+    70→  const [matchDate, setMatchDate] = useState('');
+    71→
+    72→  // UI state
+    73→  const [alertMsg, setAlertMsg] = useState<{ msg: string; isError: boolean } | null>(null);
+    74→  const [modalOpen, setModalOpen] = useState(false);
+    75→  const [mounted, setMounted] = useState(false);
+    76→  const [soundMuted, setSoundMuted] = useState(false);
+    77→  const alertTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    78→  const exportableRef = useRef<HTMLDivElement>(null);
+    79→  const soundMutedRef = useRef(false);
+    80→  const audioCtxRef = useRef<AudioContext | null>(null);
+    81→
+    82→  // Theme (light/dark)
+    83→  const { resolvedTheme, setTheme } = useTheme();
+    84→
+    85→  useEffect(() => {
+    86→    setMounted(true);
+    87→    // ตั้งค่าวันที่เริ่มต้นเป็นวันนี้ (real time)
+    88→    setMatchDate(todayISO());
+    89→    // โหลดสถานะเสียง
+    90→    try {
+    91→      const muted = localStorage.getItem('badminton_sound') === 'off';
+    92→      soundMutedRef.current = muted;
+    93→      setSoundMuted(muted);
+    94→    } catch {
+    95→      // ไม่มี localStorage ใช้ค่าเริ่มต้น
+    96→    }
+    97→    try {
+    98→      const savedMatches = localStorage.getItem('badminton_matches');
+    99→      const savedStats = localStorage.getItem('badminton_teamStats');
+   100→      if (savedMatches && savedStats) {
+   101→        setMatches(JSON.parse(savedMatches));
+   102→        setTeamStats(JSON.parse(savedStats));
+   103→      }
+   104→    } catch {
+   105→      // ข้อมูลเสียหาย ไม่ต้องโหลด
+   106→    }
+   107→    return () => {
+   108→      if (alertTimer.current) clearTimeout(alertTimer.current);
+   109→    };
+   110→  }, []);
+   111→
+   112→  // ===== ระบบเสียงเอฟเฟกต์ (Web Audio API — สังเคราะห์เสียงสด ไม่ต้องโหลดไฟล์) =====
+   113→  function getAudioCtx(): AudioContext | null {
+   114→    try {
+   115→      if (!audioCtxRef.current) {
+   116→        const AC =
+   117→          window.AudioContext ||
+   118→          (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+   119→        if (!AC) return null;
+   120→        audioCtxRef.current = new AC();
+   121→      }
+   122→      if (audioCtxRef.current.state === 'suspended') {
+   123→        void audioCtxRef.current.resume();
+   124→      }
+   125→      return audioCtxRef.current;
+   126→    } catch {
+   127→      return null;
+   128→    }
+   129→  }
+   130→
+   131→  function playTone(
+   132→    ctx: AudioContext,
+   133→    freq: number,
+   134→    start: number,
+   135→    duration: number,
+   136→    type: OscillatorType = 'sine',
+   137→    volume = 0.12
+   138→  ) {
+   139→    const osc = ctx.createOscillator();
+   140→    const gain = ctx.createGain();
+   141→    const t0 = ctx.currentTime + start;
+   142→    osc.type = type;
+   143→    osc.frequency.setValueAtTime(freq, t0);
+   144→    gain.gain.setValueAtTime(0.0001, t0);
+   145→    gain.gain.exponentialRampToValueAtTime(volume, t0 + 0.02);
+   146→    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + duration);
+   147→    osc.connect(gain);
+   148→    gain.connect(ctx.destination);
+   149→    osc.start(t0);
+   150→    osc.stop(t0 + duration + 0.05);
+   151→  }
+   152→
+   153→  function playSound(kind: SoundKind) {
+   154→    if (soundMutedRef.current) return;
+   155→    const ctx = getAudioCtx();
+   156→    if (!ctx) return;
+   157→    switch (kind) {
+   158→      case 'success': // บันทึกสำเร็จ: ไล่โน้ตขึ้น G5 → C6 → E6
+   159→        playTone(ctx, 783.99, 0, 0.14);
+   160→        playTone(ctx, 1046.5, 0.1, 0.16);
+   161→        playTone(ctx, 1318.51, 0.2, 0.3, 'sine', 0.1);
+   162→        break;
+   163→      case 'error': // กรอกไม่ครบ/ผิดพลาด: เสียงต่ำสั้น 2 จังหวะ
+   164→        playTone(ctx, 233.08, 0, 0.15, 'square', 0.05);
+   165→        playTone(ctx, 174.61, 0.13, 0.22, 'square', 0.05);
+   166→        break;
+   167→      case 'open': // เปิดสรุปภาพรวม: โน้ตคู่สั้นเบา
+   168→        playTone(ctx, 523.25, 0, 0.09, 'sine', 0.07);
+   169→        playTone(ctx, 659.25, 0.07, 0.12, 'sine', 0.07);
+   170→        break;
+   171→      case 'clear': // ล้างข้อมูล: ไล่โน้ตลง
+   172→        playTone(ctx, 659.25, 0, 0.1, 'triangle', 0.07);
+   173→        playTone(ctx, 523.25, 0.09, 0.1, 'triangle', 0.07);
+   174→        playTone(ctx, 392, 0.18, 0.2, 'triangle', 0.07);
+   175→        break;
+   176→    }
+   177→  }
+   178→
+   179→  function toggleSound() {
+   180→    const next = !soundMutedRef.current;
+   181→    soundMutedRef.current = next;
+   182→    setSoundMuted(next);
+   183→    try {
+   184→      localStorage.setItem('badminton_sound', next ? 'off' : 'on');
+   185→    } catch {
+   186→      // บันทึกไม่ได้ก็ข้าม
+   187→    }
+   188→    if (!next) playSound('open'); // เสียงตอบกลับตอนเปิดเสียง
+   189→  }
+   190→
+   191→  function toggleTheme() {
+   192→    setTheme(resolvedTheme === 'dark' ? 'light' : 'dark');
+   193→  }
+   194→
+   195→  function showAlert(msg: string, isError = true) {
+   196→    setAlertMsg({ msg, isError });
+   197→    playSound(isError ? 'error' : 'success');
+   198→    if (alertTimer.current) clearTimeout(alertTimer.current);
+   199→    alertTimer.current = setTimeout(() => setAlertMsg(null), 3000);
+   200→  }
+   201→
+   202→  // ฟังก์ชันเซฟข้อมูลลง Local Storage
+   203→  function saveDataToLocal(newMatches: Match[], newStats: Record<string, TeamStat>) {
+   204→    localStorage.setItem('badminton_matches', JSON.stringify(newMatches));
+   205→    localStorage.setItem('badminton_teamStats', JSON.stringify(newStats));
+   206→  }
+   207→
+   208→  // ฟังก์ชันล้างข้อมูลทั้งหมด
+   209→  function clearData() {
+   210→    if (window.confirm('คุณต้องการล้างข้อมูลสถิติทั้งหมดใช่หรือไม่? (ข้อมูลจะไม่สามารถกู้คืนได้)')) {
+   211→      localStorage.removeItem('badminton_matches');
+   212→      localStorage.removeItem('badminton_teamStats');
+   213→      setMatches([]);
+   214→      setTeamStats({});
+   215→      showAlert('ล้างข้อมูลเรียบร้อยแล้ว', false);
+   216→      playSound('clear');
+   217→    }
+   218→  }
+   219→
+   220→  function saveMatch() {
+   221→    const courtVal = court.trim() || '-';
+   222→    const teamAVal = teamA.trim();
+   223→    const teamBVal = teamB.trim();
+   224→    const sA = parseInt(scoreA);
+   225→    const sB = parseInt(scoreB);
+   226→
+   227→    if (!teamAVal || !teamBVal) return showAlert('กรุณากรอกชื่อทีมทั้งสองฝั่ง');
+   228→    if (teamAVal.toLowerCase() === teamBVal.toLowerCase()) return showAlert('ชื่อทีม A และ B ต้องไม่ซ้ำกัน');
+   229→    if (isNaN(sA) || isNaN(sB) || sA < 0 || sB < 0) return showAlert('กรุณากรอกคะแนนให้ถูกต้อง');
+   230→    if (sA === sB) return showAlert('แบดมินตันไม่มีผลเสมอ กรุณาตรวจสอบคะแนน');
+   231→
+   232→    const matchData: Match = {
+   233→      id: matches.length + 1,
+   234→      court: courtVal,
+   235→      type,
+   236→      teamA: teamAVal,
+   237→      teamB: teamBVal,
+   238→      scoreA: sA,
+   239→      scoreB: sB,
+   240→      maxScore,
+   241→      date: matchDate || todayISO(),
+   242→    };
+   243→
+   244→    const newMatches = [...matches, matchData];
+   245→    setMatches(newMatches);
+   246→
+   247→    const newStats = { ...teamStats };
+   248→    if (!newStats[teamAVal]) newStats[teamAVal] = { name: teamAVal, played: 0, win: 0, lose: 0 };
+   249→    if (!newStats[teamBVal]) newStats[teamBVal] = { name: teamBVal, played: 0, win: 0, lose: 0 };
+   250→    newStats[teamAVal] = { ...newStats[teamAVal], played: newStats[teamAVal].played + 1 };
+   251→    newStats[teamBVal] = { ...newStats[teamBVal], played: newStats[teamBVal].played + 1 };
+   252→    if (sA > sB) {
+   253→      newStats[teamAVal] = { ...newStats[teamAVal], win: newStats[teamAVal].win + 1 };
+   254→      newStats[teamBVal] = { ...newStats[teamBVal], lose: newStats[teamBVal].lose + 1 };
+   255→    } else {
+   256→      newStats[teamBVal] = { ...newStats[teamBVal], win: newStats[teamBVal].win + 1 };
+   257→      newStats[teamAVal] = { ...newStats[teamAVal], lose: newStats[teamAVal].lose + 1 };
+   258→    }
+   259→    setTeamStats(newStats);
+   260→
+   261→    // บันทึกลงเบราว์เซอร์
+   262→    saveDataToLocal(newMatches, newStats);
+   263→
+   264→    setScoreA('');
+   265→    setScoreB('');
+   266→    setMatchDate(todayISO()); // รีเซ็ตกลับเป็นวันนี้สำหรับแมตช์ถัดไป
+   267→
+   268→    showAlert('บันทึกผลสำเร็จ!', false);
+   269→  }
+   270→
+   271→  async function downloadAsImage() {
+   272→    const content = exportableRef.current;
+   273→    if (!content) return;
+   274→    const originalOverflow = content.style.overflow;
+   275→    const originalMaxHeight = content.style.maxHeight;
+   276→
+   277→    content.style.overflow = 'visible';
+   278→    content.style.maxHeight = 'none';
+   279→
+   280→    try {
+   281→      const html2canvas = (await import('html2canvas')).default;
+   282→      const canvas = await html2canvas(content, { backgroundColor: '#ffffff', scale: 2 });
+   283→      const link = document.createElement('a');
+   284→      link.download = 'badminton_summary.png';
+   285→      link.href = canvas.toDataURL('image/png');
+   286→      link.click();
+   287→    } finally {
+   288→      content.style.overflow = originalOverflow;
+   289→      content.style.maxHeight = originalMaxHeight;
+   290→    }
+   291→  }
+   292→
+   293→  // อันดับ (เรียงตาม Win Rate)
+   294→  const rankedTeams: RankedTeam[] = Object.values(teamStats)
+   295→    .map((t) => ({ ...t, winRate: (t.win / t.played) * 100 }))
+   296→    .sort((a, b) => b.winRate - a.winRate || b.win - a.win);
+   297→
+   298→  const summaryTeams: RankedTeam[] = Object.values(teamStats)
+   299→    .map((t) => ({ ...t, winRate: (t.win / t.played) * 100 }))
+   300→    .sort((a, b) => b.winRate - a.winRate);
+   301→
+   302→  const inputBase =
+   303→    'w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-800 outline-none transition focus:bg-white focus:ring-2 focus:ring-blue-500/60 focus:border-blue-400 dark:bg-gray-800/70 dark:border-gray-700 dark:text-gray-100 dark:focus:bg-gray-800/70';
+   304→
+   305→  const isDark = mounted && resolvedTheme === 'dark';
+   306→
+   307→  return (
+   308→    <div
+   309→      className="min-h-screen bg-gradient-to-br from-slate-100 via-gray-50 to-blue-50 text-gray-800 dark:from-slate-950 dark:via-gray-950 dark:to-blue-950 dark:text-gray-100"
+   310→      style={{ fontFamily: "'Noto Sans Thai', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif" }}
+   311→    >
+   312→      {/* ===== Navbar ===== */}
+   313→      <nav className="sticky top-0 z-40 bg-gradient-to-r from-blue-800 via-blue-600 to-sky-500 text-white shadow-lg shadow-blue-900/20">
+   314→        <div className="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center gap-3">
+   315→          <div className="flex items-center gap-3 min-w-0">
+   316→            <span
+   317→              className="w-10 h-10 rounded-xl bg-white/15 ring-1 ring-white/30 flex items-center justify-center text-xl shrink-0 shadow-inner"
+   318→              role="img"
+   319→              aria-label="แบดมินตัน"
+   320→            >
+   321→              🏸
+   322→            </span>
+   323→            <div className="min-w-0">
+   324→              <h1 className="text-lg sm:text-xl font-extrabold tracking-tight truncate leading-tight">
+   325→                บันทึกสถิติแบดมินตัน
+   326→              </h1>
+   327→              <p className="text-[11px] sm:text-xs text-blue-100/90 font-medium leading-tight">
+   328→                ระบบเก็บสถิติการแข่งขัน • Badminton Stats
+   329→              </p>
+   330→            </div>
+   331→          </div>
+   332→          <div className="flex items-center gap-2 shrink-0">
+   333→            {/* ปุ่มเปิด/ปิดเสียง */}
+   334→            <button
+   335→              onClick={toggleSound}
+   336→              aria-label={soundMuted ? 'เปิดเสียงเอฟเฟกต์' : 'ปิดเสียงเอฟเฟกต์'}
+   337→              title={soundMuted ? 'เปิดเสียงเอฟเฟกต์' : 'ปิดเสียงเอฟเฟกต์'}
+   338→              className="bg-white/10 hover:bg-white/20 border border-white/25 text-white w-9 h-9 rounded-xl transition flex items-center justify-center text-sm"
+   339→            >
+   340→              <i className={`fa-solid ${soundMuted ? 'fa-volume-xmark' : 'fa-volume-high'}`}></i>
+   341→            </button>
+   342→            {/* ปุ่มสลับธีม light/dark */}
+   343→            <button
+   344→              onClick={toggleTheme}
+   345→              aria-label={isDark ? 'สลับเป็นโหมดสว่าง' : 'สลับเป็นโหมดมืด'}
+   346→              title={isDark ? 'โหมดสว่าง' : 'โหมดมืด'}
+   347→              className="bg-white/10 hover:bg-white/20 border border-white/25 text-white w-9 h-9 rounded-xl transition flex items-center justify-center text-sm"
+   348→            >
+   349→              <i className={`fa-solid ${isDark ? 'fa-sun' : 'fa-moon'}`}></i>
+   350→            </button>
+   351→            <button
+   352→              onClick={clearData}
+   353→              className="bg-white/10 hover:bg-rose-500 border border-white/25 text-white px-3 py-2 rounded-xl font-semibold transition text-sm flex items-center gap-1.5"
+   354→            >
+   355→              <i className="fa-solid fa-trash-can"></i>
+   356→              <span className="hidden sm:inline">ล้างข้อมูล</span>
+   357→            </button>
+   358→            <button
+   359→              onClick={() => {
+   360→                setModalOpen(true);
+   361→                playSound('open');
+   362→              }}
+   363→              className="bg-white text-blue-700 hover:bg-blue-50 px-3 py-2 rounded-xl font-bold transition text-sm shadow-md flex items-center gap-1.5"
+   364→            >
+   365→              <i className="fa-solid fa-chart-pie"></i>
+   366→              <span className="hidden sm:inline">สรุปภาพรวม</span>
+   367→            </button>
+   368→          </div>
+   369→        </div>
+   370→      </nav>
+   371→
+   372→      <main className="max-w-7xl mx-auto px-4 py-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+   373→        {/* ===== ฝั่งซ้าย: ฟอร์มกรอกข้อมูล ===== */}
+   374→        <section className="lg:col-span-2 bg-white rounded-2xl shadow-sm ring-1 ring-gray-200/70 p-5 sm:p-6 dark:bg-gray-900 dark:ring-gray-700/60">
+   375→          <div className="flex items-center gap-3 mb-5">
+   376→            <span className="w-9 h-9 rounded-xl bg-blue-100 text-blue-600 dark:bg-blue-950 dark:text-blue-400 flex items-center justify-center shrink-0">
+   377→              <i className="fa-solid fa-pen-to-square text-sm"></i>
+   378→            </span>
+   379→            <div>
+   380→              <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100 leading-tight">
+   381→                บันทึกผลการแข่งขัน
+   382→              </h2>
+   383→              <p className="text-xs text-gray-400">กรอกข้อมูลให้ครบถ้วนแล้วกดบันทึกผล</p>
+   384→            </div>
+   385→          </div>
+   386→
+   387→          {/* ข้อมูลแมตช์ */}
+   388→          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
+   389→            <div>
+   390→              <label htmlFor="court" className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1.5">
+   391→                <i className="fa-solid fa-location-dot text-gray-400 mr-1"></i>ชื่อสนาม
+   392→              </label>
+   393→              <input
+   394→                type="text"
+   395→                id="court"
+   396→                value={court}
+   397→                onChange={(e) => setCourt(e.target.value)}
+   398→                className={inputBase}
+   399→                placeholder="เช่น คอร์ท 1"
+   400→              />
+   401→            </div>
+   402→            <div>
+   403→              <label htmlFor="type" className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1.5">
+   404→                <i className="fa-solid fa-user-group text-gray-400 mr-1"></i>ประเภทการตี
+   405→              </label>
+   406→              <select
+   407→                id="type"
+   408→                value={type}
+   409→                onChange={(e) => setType(e.target.value)}
+   410→                className={`${inputBase} cursor-pointer`}
+   411→              >
+   412→                <option value="เดี่ยว">เดี่ยว (Singles)</option>
+   413→                <option value="คู่">คู่ (Doubles)</option>
+   414→              </select>
+   415→            </div>
+   416→            <div>
+   417→              <label htmlFor="matchDate" className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1.5">
+   418→                <i className="fa-regular fa-calendar-days text-gray-400 mr-1"></i>วัน/เดือน/ปี
+   419→              </label>
+   420→              <input
+   421→                type="date"
+   422→                id="matchDate"
+   423→                value={matchDate}
+   424→                onChange={(e) => setMatchDate(e.target.value)}
+   425→                className={`${inputBase} cursor-pointer`}
+   426→              />
+   427→            </div>
+   428→          </div>
+   429→
+   430→          {/* คะแนนสองทีม */}
+   431→          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+   432→            <div className="bg-blue-50/60 ring-1 ring-blue-100 rounded-2xl p-4 dark:bg-blue-950/40 dark:ring-blue-900/60">
+   433→              <div className="flex items-center justify-center gap-2 mb-3">
+   434→                <span className="w-6 h-6 rounded-full bg-blue-600 text-white text-xs font-extrabold flex items-center justify-center shadow">
+   435→                  A
+   436→                </span>
+   437→                <h3 className="font-bold text-blue-800 dark:text-blue-300">ทีม A</h3>
+   438→              </div>
+   439→              <label htmlFor="teamA" className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+   440→                ชื่อผู้เล่น/ทีม
+   441→              </label>
+   442→              <input
+   443→                type="text"
+   444→                id="teamA"
+   445→                value={teamA}
+   446→                onChange={(e) => setTeamA(e.target.value)}
+   447→                className="w-full bg-white border border-blue-200 rounded-xl px-3 py-2 text-center font-semibold text-blue-700 outline-none transition focus:ring-2 focus:ring-blue-400 dark:bg-blue-950/50 dark:border-blue-800 dark:text-blue-300"
+   448→                placeholder="ชื่อทีม A"
+   449→              />
+   450→              <label htmlFor="scoreA" className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1 mt-3">
+   451→                แต้มที่ได้
+   452→              </label>
+   453→              <input
+   454→                type="number"
+   455→                id="scoreA"
+   456→                min={0}
+   457→                value={scoreA}
+   458→                onChange={(e) => setScoreA(e.target.value)}
+   459→                className="w-full bg-white border border-blue-200 rounded-xl px-3 py-2 text-center text-2xl font-extrabold text-blue-700 outline-none transition focus:ring-2 focus:ring-blue-400 dark:bg-blue-950/50 dark:border-blue-800 dark:text-blue-300"
+   460→                placeholder="0"
+   461→              />
+   462→            </div>
+   463→
+   464→            <div className="bg-rose-50/60 ring-1 ring-rose-100 rounded-2xl p-4 dark:bg-rose-950/30 dark:ring-rose-900/60">
+   465→              <div className="flex items-center justify-center gap-2 mb-3">
+   466→                <span className="w-6 h-6 rounded-full bg-rose-600 text-white text-xs font-extrabold flex items-center justify-center shadow">
+   467→                  B
+   468→                </span>
+   469→                <h3 className="font-bold text-rose-800 dark:text-rose-300">ทีม B</h3>
+   470→              </div>
+   471→              <label htmlFor="teamB" className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+   472→                ชื่อผู้เล่น/ทีม
+   473→              </label>
+   474→              <input
+   475→                type="text"
+   476→                id="teamB"
+   477→                value={teamB}
+   478→                onChange={(e) => setTeamB(e.target.value)}
+   479→                className="w-full bg-white border border-rose-200 rounded-xl px-3 py-2 text-center font-semibold text-rose-700 outline-none transition focus:ring-2 focus:ring-rose-400 dark:bg-rose-950/40 dark:border-rose-900 dark:text-rose-300"
+   480→                placeholder="ชื่อทีม B"
+   481→              />
+   482→              <label htmlFor="scoreB" className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1 mt-3">
+   483→                แต้มที่ได้
+   484→              </label>
+   485→              <input
+   486→                type="number"
+   487→                id="scoreB"
+   488→                min={0}
+   489→                value={scoreB}
+   490→                onChange={(e) => setScoreB(e.target.value)}
+   491→                className="w-full bg-white border border-rose-200 rounded-xl px-3 py-2 text-center text-2xl font-extrabold text-rose-700 outline-none transition focus:ring-2 focus:ring-rose-400 dark:bg-rose-950/40 dark:border-rose-900 dark:text-rose-300"
+   492→                placeholder="0"
+   493→              />
+   494→            </div>
+   495→          </div>
+   496→
+   497→          {/* ปุ่มบันทึก */}
+   498→          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-4 border-t border-gray-100 dark:border-gray-800">
+   499→            <div className="flex items-center gap-2 text-sm">
+   500→              <label htmlFor="maxScore" className="font-medium text-gray-500 dark:text-gray-400">
+   501→                <i className="fa-solid fa-flag text-gray-400 mr-1.5"></i>เกมละกี่แต้ม:
+   502→              </label>
+   503→              <select
+   504→                id="maxScore"
+   505→                value={maxScore}
+   506→                onChange={(e) => setMaxScore(e.target.value)}
+   507→                className="border border-gray-200 bg-gray-50 rounded-lg px-2.5 py-1.5 text-sm font-semibold text-gray-800 outline-none cursor-pointer transition focus:ring-2 focus:ring-blue-400 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100"
+   508→              >
+   509→                <option value="21">21 แต้ม</option>
+   510→                <option value="15">15 แต้ม</option>
+   511→              </select>
+   512→            </div>
+   513→            <button
+   514→              onClick={saveMatch}
+   515→              className="w-full sm:w-auto bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white px-7 py-2.5 rounded-xl font-bold shadow-lg shadow-green-500/25 transition flex items-center justify-center gap-2 active:scale-[0.98]"
+   516→            >
+   517→              <i className="fa-solid fa-floppy-disk"></i> บันทึกผล
+   518→            </button>
+   519→          </div>
+   520→
+   521→          {alertMsg && (
+   522→            <div
+   523→              role="alert"
+   524→              className={`mt-4 p-3 rounded-xl text-sm text-center font-semibold flex items-center justify-center gap-2 ${
+   525→                alertMsg.isError
+   526→                  ? 'bg-rose-50 text-rose-600 ring-1 ring-rose-200 dark:bg-rose-950/60 dark:text-rose-300 dark:ring-rose-900'
+   527→                  : 'bg-emerald-50 text-emerald-600 ring-1 ring-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:ring-emerald-900'
+   528→              }`}
+   529→            >
+   530→              <i className={`fa-solid ${alertMsg.isError ? 'fa-circle-exclamation' : 'fa-circle-check'}`}></i>
+   531→              {alertMsg.msg}
+   532→            </div>
+   533→          )}
+   534→        </section>
+   535→
+   536→        {/* ===== ฝั่งขวา: ตารางอันดับ ===== */}
+   537→        <aside className="bg-white rounded-2xl shadow-sm ring-1 ring-gray-200/70 p-5 sm:p-6 flex flex-col dark:bg-gray-900 dark:ring-gray-700/60">
+   538→          <div className="flex items-center gap-3 mb-5">
+   539→            <span className="w-9 h-9 rounded-xl bg-amber-100 text-amber-500 dark:bg-amber-950 dark:text-amber-400 flex items-center justify-center shrink-0">
+   540→              <i className="fa-solid fa-trophy text-sm"></i>
+   541→            </span>
+   542→            <div>
+   543→              <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100 leading-tight">ตารางอันดับ</h2>
+   544→              <p className="text-xs text-gray-400">จัดอันดับตาม Win Rate แบบเรียลไทม์</p>
+   545→            </div>
+   546→          </div>
+   547→
+   548→          {rankedTeams.length === 0 ? (
+   549→            <div className="flex-1 flex flex-col items-center justify-center text-center py-12 border-2 border-dashed border-gray-200 rounded-2xl dark:border-gray-700">
+   550→              <span className="text-4xl mb-3" role="img" aria-label="แบดมินตัน">
+   551→                🏸
+   552→              </span>
+   553→              <p className="text-gray-400 text-sm font-semibold">ยังไม่มีข้อมูล</p>
+   554→              <p className="text-gray-300 dark:text-gray-600 text-xs mt-1">เริ่มบันทึกผลการแข่งขันเลย!</p>
+   555→            </div>
+   556→          ) : (
+   557→            <ol className="space-y-2.5">
+   558→              {rankedTeams.map((team, index) => (
+   559→                <li
+   560→                  key={team.name}
+   561→                  className="flex items-center gap-3 p-3 rounded-xl ring-1 ring-gray-100 hover:ring-blue-200 hover:bg-blue-50/40 transition dark:ring-gray-800 dark:hover:ring-blue-800 dark:hover:bg-blue-950/40"
+   562→                >
+   563→                  <span
+   564→                    className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-extrabold shrink-0 shadow ${rankBadgeClass(index)}`}
+   565→                  >
+   566→                    {index < 3 ? <i className="fa-solid fa-medal"></i> : index + 1}
+   567→                  </span>
+   568→                  <div className="flex-1 min-w-0">
+   569→                    <div className="flex items-center justify-between gap-2">
+   570→                      <p className="font-bold text-gray-800 dark:text-gray-100 text-sm truncate">{team.name}</p>
+   571→                      <span className="text-sm font-extrabold text-blue-600 dark:text-blue-400 shrink-0">
+   572→                        {team.winRate.toFixed(1)}%
+   573→                      </span>
+   574→                    </div>
+   575→                    <div className="flex items-center justify-between text-xs text-gray-400 mt-0.5">
+   576→                      <span>แข่ง {team.played} แมตช์</span>
+   577→                      <span>
+   578→                        <span className="text-emerald-600 dark:text-emerald-400 font-bold">{team.win}W</span>
+   579→                        {' - '}
+   580→                        <span className="text-rose-500 dark:text-rose-400 font-bold">{team.lose}L</span>
+   581→                      </span>
+   582→                    </div>
+   583→                    <div className="h-1.5 bg-gray-100 rounded-full mt-2 overflow-hidden dark:bg-gray-800">
+   584→                      <div
+   585→                        className="h-full bg-gradient-to-r from-blue-600 to-sky-400 rounded-full transition-all"
+   586→                        style={{ width: `${team.winRate}%` }}
+   587→                      ></div>
+   588→                    </div>
+   589→                  </div>
+   590→                </li>
+   591→              ))}
+   592→            </ol>
+   593→          )}
+   594→        </aside>
+   595→      </main>
+   596→
+   597→      {/* ===== Modal สรุปภาพรวม ===== */}
+   598→      <div
+   599→        id="summaryModal"
+   600→        className={`fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-50 justify-center items-center p-4 ${
+   601→          modalOpen ? 'flex' : 'hidden'
+   602→        }`}
+   603→      >
+   604→        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden dark:bg-gray-900">
+   605→          {/* หัวโมดอล */}
+   606→          <div className="flex justify-between items-center px-5 py-4 border-b border-gray-100 bg-gradient-to-r from-blue-50 via-white to-white dark:border-gray-800 dark:from-gray-800 dark:via-gray-900 dark:to-gray-900">
+   607→            <div className="flex items-center gap-3 min-w-0">
+   608→              <span className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-sky-500 text-white flex items-center justify-center shadow-lg shadow-blue-600/25 shrink-0">
+   609→                <i className="fa-solid fa-chart-pie"></i>
+   610→              </span>
+   611→              <div className="min-w-0">
+   612→                <h2 className="text-xl font-extrabold text-gray-800 dark:text-gray-100 leading-tight truncate">
+   613→                  สรุปภาพรวมทั้งหมด
+   614→                </h2>
+   615→                <p className="text-xs text-gray-400">สถิติทุกทีมและประวัติการแข่งขัน</p>
+   616→              </div>
+   617→            </div>
+   618→            <div className="flex items-center gap-2 shrink-0">
+   619→              <button
+   620→                onClick={downloadAsImage}
+   621→                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl font-semibold text-sm transition shadow-md shadow-blue-600/20"
+   622→              >
+   623→                <i className="fa-solid fa-camera mr-1.5"></i>เซฟเป็นรูป
+   624→              </button>
+   625→              <button
+   626→                onClick={() => setModalOpen(false)}
+   627→                aria-label="ปิดหน้าต่าง"
+   628→                className="w-9 h-9 rounded-xl text-gray-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/60 transition flex items-center justify-center"
+   629→              >
+   630→                <i className="fa-solid fa-xmark text-lg"></i>
+   631→              </button>
+   632→            </div>
+   633→          </div>
+   634→
+   635→          {/* เนื้อหาในโมดอล */}
+   636→          <div
+   637→            id="exportableArea"
+   638→            ref={exportableRef}
+   639→            className="overflow-y-auto p-5 space-y-8 flex-grow bg-white dark:bg-gray-900"
+   640→          >
+   641→            {/* สถิติแต่ละทีม */}
+   642→            <section>
+   643→              <h3 className="text-base font-bold text-gray-700 dark:text-gray-200 mb-3 flex items-center gap-2">
+   644→                <i className="fa-solid fa-users text-blue-500"></i>สถิติแต่ละทีม
+   645→              </h3>
+   646→              <div id="teamStatsCards" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+   647→                {summaryTeams.length === 0 ? (
+   648→                  <div className="col-span-full text-center py-10 text-gray-400 border-2 border-dashed border-gray-200 rounded-2xl dark:border-gray-700">
+   649→                    <i className="fa-solid fa-chart-simple text-2xl mb-2 block"></i>
+   650→                    ยังไม่มีข้อมูลสถิติ
+   651→                  </div>
+   652→                ) : (
+   653→                  summaryTeams.map((team) => {
+   654→                    const winRate = team.winRate.toFixed(1);
+   655→                    return (
+   656→                      <div
+   657→                        key={team.name}
+   658→                        className="relative bg-white ring-1 ring-gray-200 rounded-2xl p-4 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition overflow-hidden dark:bg-gray-800 dark:ring-gray-700"
+   659→                      >
+   660→                        <div className="absolute top-0 right-0 px-2.5 py-1 rounded-bl-xl bg-gradient-to-r from-blue-600 to-sky-500 text-white text-[11px] font-extrabold">
+   661→                          {winRate}% WR
+   662→                        </div>
+   663→                        <h4 className="font-extrabold text-gray-800 dark:text-gray-100 text-base mb-3 pr-16 truncate">
+   664→                          {team.name}
+   665→                        </h4>
+   666→                        <div className="flex justify-between text-xs text-gray-400 mb-2">
+   667→                          <span>แข่งทั้งหมด</span>
+   668→                          <span className="font-bold text-gray-600 dark:text-gray-300">{team.played} แมตช์</span>
+   669→                        </div>
+   670→                        <div className="grid grid-cols-2 gap-2 text-center">
+   671→                          <div className="bg-emerald-50 ring-1 ring-emerald-100 text-emerald-700 rounded-xl py-1.5 dark:bg-emerald-950/60 dark:ring-emerald-900 dark:text-emerald-300">
+   672→                            <div className="text-[11px]">ชนะ</div>
+   673→                            <div className="font-extrabold text-lg leading-tight">{team.win}</div>
+   674→                          </div>
+   675→                          <div className="bg-rose-50 ring-1 ring-rose-100 text-rose-600 rounded-xl py-1.5 dark:bg-rose-950/50 dark:ring-rose-900 dark:text-rose-300">
+   676→                            <div className="text-[11px]">แพ้</div>
+   677→                            <div className="font-extrabold text-lg leading-tight">{team.lose}</div>
+   678→                          </div>
+   679→                        </div>
+   680→                        <div className="w-full bg-gray-100 rounded-full h-2 mt-3 overflow-hidden dark:bg-gray-700">
+   681→                          <div
+   682→                            className="h-full bg-gradient-to-r from-blue-600 to-sky-400 rounded-full"
+   683→                            style={{ width: `${winRate}%` }}
+   684→                          ></div>
+   685→                        </div>
+   686→                      </div>
+   687→                    );
+   688→                  })
+   689→                )}
+   690→              </div>
+   691→            </section>
+   692→
+   693→            {/* ประวัติการแข่งขัน */}
+   694→            <section>
+   695→              <h3 className="text-base font-bold text-gray-700 dark:text-gray-200 mb-3 flex items-center gap-2">
+   696→                <i className="fa-solid fa-clock-rotate-left text-blue-500"></i>ประวัติการแข่งขัน (Match
+   697→                History)
+   698→              </h3>
+   699→              <div className="overflow-x-auto ring-1 ring-gray-200 rounded-2xl dark:ring-gray-700">
+   700→                <table className="w-full text-sm text-left">
+   701→                  <thead className="bg-gray-50 text-gray-500 text-xs font-semibold dark:bg-gray-800/80 dark:text-gray-400">
+   702→                    <tr>
+   703→                      <th className="p-3">แมตช์</th>
+   704→                      <th className="p-3">วันที่</th>
+   705→                      <th className="p-3">สนาม</th>
+   706→                      <th className="p-3">ประเภท</th>
+   707→                      <th className="p-3 text-right">ทีม A</th>
+   708→                      <th className="p-3 text-center">คะแนน</th>
+   709→                      <th className="p-3 text-left">ทีม B</th>
+   710→                      <th className="p-3 text-center">แต้มจบ</th>
+   711→                    </tr>
+   712→                  </thead>
+   713→                  <tbody id="historyBody" className="divide-y divide-gray-100 dark:divide-gray-800">
+   714→                    {matches.length === 0 ? (
+   715→                      <tr>
+   716→                        <td colSpan={8} className="text-center py-10 text-gray-400">
+   717→                          <i className="fa-regular fa-folder-open text-2xl mb-2 block"></i>
+   718→                          ยังไม่มีประวัติการแข่งขัน
+   719→                        </td>
+   720→                      </tr>
+   721→                    ) : (
+   722→                      [...matches].reverse().map((m) => {
+   723→                        const aClass =
+   724→                          m.scoreA > m.scoreB
+   725→                            ? 'font-bold text-emerald-600 dark:text-emerald-400'
+   726→                            : 'text-gray-500 dark:text-gray-400';
+   727→                        const bClass =
+   728→                          m.scoreB > m.scoreA
+   729→                            ? 'font-bold text-emerald-600 dark:text-emerald-400'
+   730→                            : 'text-gray-500 dark:text-gray-400';
+   731→
+   732→                        return (
+   733→                          <tr key={m.id} className="hover:bg-gray-50/70 dark:hover:bg-gray-800/60">
+   734→                            <td className="p-3 text-center font-bold text-gray-400">#{m.id}</td>
+   735→                            <td className="p-3 text-center">
+   736→                              <span className="inline-flex items-center gap-1.5 bg-blue-50 text-blue-700 ring-1 ring-blue-100 px-2 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap dark:bg-blue-950/70 dark:text-blue-300 dark:ring-blue-900">
+   737→                                <i className="fa-regular fa-calendar-days text-[10px]"></i>
+   738→                                {formatThaiDate(m.date)}
+   739→                              </span>
+   740→                            </td>
+   741→                            <td className="p-3 dark:text-gray-200">{m.court}</td>
+   742→                            <td className="p-3">
+   743→                              <span className="inline-flex items-center rounded-full bg-gray-100 text-gray-600 px-2 py-0.5 text-xs font-medium dark:bg-gray-800 dark:text-gray-300">
+   744→                                {m.type}
+   745→                              </span>
+   746→                            </td>
+   747→                            <td className={`p-3 text-right ${aClass}`}>{m.teamA}</td>
+   748→                            <td className="p-3 text-center font-extrabold tracking-widest text-gray-700 dark:text-gray-200">
+   749→                              {m.scoreA} - {m.scoreB}
+   750→                            </td>
+   751→                            <td className={`p-3 text-left ${bClass}`}>{m.teamB}</td>
+   752→                            <td className="p-3 text-center text-xs text-gray-400">{m.maxScore} แต้ม</td>
+   753→                          </tr>
+   754→                        );
+   755→                      })
+   756→                    )}
+   757→                  </tbody>
+   758→                </table>
+   759→              </div>
+   760→            </section>
+   761→          </div>
+   762→
+   763→          {/* ท้ายโมดอล */}
+   764→          <div className="px-5 py-4 border-t border-gray-100 bg-gray-50 flex justify-end dark:border-gray-800 dark:bg-gray-800/60">
+   765→            <button
+   766→              onClick={() => setModalOpen(false)}
+   767→              className="bg-gray-600 hover:bg-gray-700 text-white px-5 py-2 rounded-xl font-semibold shadow transition"
+   768→            >
+   769→              ปิดหน้าต่าง
+   770→            </button>
+   771→          </div>
+   772→        </div>
+   773→      </div>
+   774→    </div>
+   775→  );
+   776→}
+   777→

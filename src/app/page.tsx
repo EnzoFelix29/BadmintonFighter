@@ -20,6 +20,10 @@ import { ScoreHud } from '@/components/score-hud';
 import { FlipCoinModal } from '@/components/flip-coin-modal';
 import { FoodRouletteModal } from '@/components/food-roulette-modal';
 import { FOOD_MENUS, pickFoodMenu, type FoodMenu, type FoodMenuId } from '@/lib/food-menus';
+import { CourtFeeModal } from '@/components/court-fee-modal';
+import { CrocGameModal } from '@/components/croc-game-modal';
+import { HiLoGameModal } from '@/components/hilo-game-modal';
+import { DinoGameModal } from '@/components/dino-game-modal';
 import { RulesModal } from '@/components/rules-modal';
 import { Podium } from '@/components/podium';
 import { WinRateRing } from '@/components/win-rate-ring';
@@ -246,6 +250,11 @@ export default function Home() {
   const [foodDisplay, setFoodDisplay] = useState<FoodMenuId>('congee'); // เมนูที่โชว์ในช่องสล็อตขณะวน
   const [foodResult, setFoodResult] = useState<FoodMenu | null>(null);
   const foodTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // ลูกเล่นหลังตีแบตอีก 4 อย่าง: คิดตังค่าสนาม / มินิเกมจระเข้กดนิ้ว / มินิเกม HI-LO / มินิเกมดีโน่รัน
+  const [feeOpen, setFeeOpen] = useState(false);
+  const [crocOpen, setCrocOpen] = useState(false);
+  const [hiloOpen, setHiloOpen] = useState(false);
+  const [dinoOpen, setDinoOpen] = useState(false);
   const [rulesOpen, setRulesOpen] = useState(false); // Modal กฎกติกา & วิธีได้เหรียญ
   // โหมดการแสดงผลของจอ: 'portrait' = แนวตั้ง | 'landscape' = แนวนอน
   const [disp, setDisp] = useState<'portrait' | 'landscape'>('portrait');
@@ -1235,6 +1244,69 @@ export default function Home() {
               {alertMsg.msg}
             </div>
           )}
+
+          {/* ===== ลูกเล่นหลังตีแบต: คิดตังค่าสนาม / จระเข้กดนิ้ว / HI-LO / ดีโน่รัน ===== */}
+          <div className="mt-6 pt-4 border-t border-gray-100 dark:border-gray-800">
+            <div className="flex items-center gap-2 mb-3">
+              <span className={`w-7 h-7 ${hudSkin.panelIcon} flex items-center justify-center shrink-0`}>
+                <i className="fa-solid fa-dice text-xs"></i>
+              </span>
+              <div>
+                <h3 className={`${hudSkin.heading} text-sm font-bold leading-tight`}>ลูกเล่นหลังตีแบต</h3>
+                <p className="text-[11px] text-gray-400">คิดตังค่าสนาม • จระเข้กดนิ้ว • HI-LO • ดีโน่รัน</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setFeeOpen(true);
+                  playSound('open');
+                }}
+                title="คิดตังค่าสนาม — ใส่ราคารวมค่าคอร์ทและจำนวนคนที่จะหาร"
+                className={`${hudSkin.btn} px-1 py-2.5 flex flex-col items-center gap-1 text-[11px] font-bold leading-tight text-center transition active:scale-[0.97] cursor-pointer`}
+              >
+                <span className="text-lg leading-none" aria-hidden="true">🧮</span>
+                คิดตังค่าสนาม
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setCrocOpen(true);
+                  playSound('open');
+                }}
+                title="มินิเกมจระเข้กดนิ้ว — ผลัดกันกดฟัน ซี่ไหนเจอฟันเสียจะโดนกัด"
+                className={`${hudSkin.btn} px-1 py-2.5 flex flex-col items-center gap-1 text-[11px] font-bold leading-tight text-center transition active:scale-[0.97] cursor-pointer`}
+              >
+                <span className="text-lg leading-none" aria-hidden="true">🐊</span>
+                จระเข้กดนิ้ว
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setHiloOpen(true);
+                  playSound('open');
+                }}
+                title="มินิเกม HI-LO — ทายว่าไพ่ต่อไปสูงกว่าหรือต่ำกว่า"
+                className={`${hudSkin.btn} px-1 py-2.5 flex flex-col items-center gap-1 text-[11px] font-bold leading-tight text-center transition active:scale-[0.97] cursor-pointer`}
+              >
+                <span className="text-lg leading-none" aria-hidden="true">🃏</span>
+                HI-LO
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setDinoOpen(true);
+                  playSound('open');
+                }}
+                title="มินิเกมดีโน่รัน — กด SPACE หรือแตะจอเพื่อกระโดดหลบแคคตัส เก็บคะแนนสูงสุด"
+                className={`${hudSkin.btn} px-1 py-2.5 flex flex-col items-center gap-1 text-[11px] font-bold leading-tight text-center transition active:scale-[0.97] cursor-pointer`}
+              >
+                <span className="text-lg leading-none" aria-hidden="true">🦖</span>
+                ดีโน่รัน
+              </button>
+            </div>
+          </div>
         </section>
 
         {/* ===== ฝั่งขวา: ตารางอันดับ ===== */}
@@ -1577,6 +1649,33 @@ export default function Home() {
         skin={hudSkin}
         onRollAgain={rollFood}
         onClose={() => setFoodOpen(false)}
+      />
+
+      {/* ===== Popup คิดตังค่าสนาม ===== */}
+      <CourtFeeModal open={feeOpen} skin={hudSkin} onClose={() => setFeeOpen(false)} />
+
+      {/* ===== มินิเกมจระเข้กดนิ้ว ===== */}
+      <CrocGameModal
+        open={crocOpen}
+        skin={hudSkin}
+        sound={playSound}
+        onClose={() => setCrocOpen(false)}
+      />
+
+      {/* ===== มินิเกม HI-LO ===== */}
+      <HiLoGameModal
+        open={hiloOpen}
+        skin={hudSkin}
+        sound={playSound}
+        onClose={() => setHiloOpen(false)}
+      />
+
+      {/* ===== มินิเกมดีโน่รัน (Chrome Dino) ===== */}
+      <DinoGameModal
+        open={dinoOpen}
+        skin={hudSkin}
+        sound={playSound}
+        onClose={() => setDinoOpen(false)}
       />
     </div>
   );

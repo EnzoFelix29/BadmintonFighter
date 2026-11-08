@@ -6,7 +6,7 @@ import { PixelFoodArt } from '@/components/pixel-food';
 
 // ===== HUD สกอร์บอร์ดสด =====
 // มิเรอร์คะแนนที่กรอกในฟอร์มแบบเรียลไทม์ + ป้ายเกมละกี่แต้ม + ผลจับเหรียญเสิร์ฟก่อน
-// เปลี่ยนลุคได้ 5 สกิน (คลาสสิก / นีออน / เรโทร 8-บิต / ทองหรู / มินิมอล)
+// เปลี่ยนลุคได้ 11 สกิน — เลือกผ่านกล่องแตะ (tap box) ประหยัดพื้นที่แทนชิปเรียงแถว
 export function ScoreHud({
   skin,
   teamAName,
@@ -39,29 +39,33 @@ export function ScoreHud({
 
   return (
     <div className="mb-5">
-      {/* แถวหัว: ป้าย HUD + ตัวเลือกสกิน 5 แบบ */}
+      {/* แถวหัว: ป้าย HUD + กล่องแตะเลือกสกิน (ประหยัดพื้นที่ ไม่วางชิปทุกแบบ) */}
       <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
         <p className="flex items-center gap-2 text-xs font-semibold text-gray-500 dark:text-gray-400">
           <i className="fa-solid fa-tv text-blue-500"></i>สกอร์บอร์ด HUD — อัปเดตสดตามที่กรอก
         </p>
-        <div role="group" aria-label="เลือกสกิน HUD" className="flex flex-wrap items-center gap-1.5">
+        <div role="group" aria-label="เลือกสกิน HUD" className="flex items-center gap-1.5">
           <span className="text-[11px] font-medium text-gray-400">สกิน HUD:</span>
-          {HUD_SKINS.map((s) => (
-            <button
-              key={s.id}
-              type="button"
-              onClick={() => onPickSkin(s.id)}
-              title={`สกิน ${s.name} — ${s.tag}`}
-              aria-pressed={s.id === skin.id}
-              className={`px-2 py-1 rounded-lg text-[11px] font-bold transition cursor-pointer ${s.chip} ${
-                s.id === skin.id
-                  ? 'ring-2 ring-blue-500 ring-offset-1 dark:ring-offset-gray-900 scale-[1.04]'
-                  : 'opacity-75 hover:opacity-100'
-              }`}
+          <div className="relative inline-flex">
+            <select
+              id="hud-skin-select"
+              value={skin.id}
+              onChange={(e) => onPickSkin(e.target.value)}
+              title={`สกิน ${skin.name} — ${skin.tag} (แตะเพื่อเลือกจากทั้งหมด ${HUD_SKINS.length} แบบ)`}
+              aria-label="เลือกสกิน HUD"
+              className={`appearance-none pl-2.5 pr-7 py-1 rounded-lg text-[11px] font-bold cursor-pointer outline-none focus:ring-2 focus:ring-blue-400 transition ${skin.chip}`}
             >
-              {s.name}
-            </button>
-          ))}
+              {HUD_SKINS.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name} — {s.tag}
+                </option>
+              ))}
+            </select>
+            <i
+              aria-hidden="true"
+              className="fa-solid fa-chevron-down pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[9px] text-gray-500 opacity-70"
+            ></i>
+          </div>
         </div>
       </div>
 
@@ -94,7 +98,7 @@ export function ScoreHud({
           </div>
         </div>
 
-        {/* แถวล่าง: ป้ายสถานะ + จับเหรียญเสิร์ฟก่อน */}
+        {/* แถวล่าง: ป้ายสถานะ (ซ้าย) + กลุ่มปุ่มจับเหรียญ/สุ่มเมนูอาหาร (ขวา ชิดกันเป็นระเบียบ ไม่ลอยกลางจอ) */}
         <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
           <div className="flex flex-wrap items-center gap-1.5">
             <span
@@ -113,39 +117,42 @@ export function ScoreHud({
                 : 'ยังไม่ได้จับเหรียญเสิร์ฟ'}
             </span>
           </div>
-          <button
-            type="button"
-            onClick={onFlip}
-            disabled={flipState === 'flipping'}
-            title="จับเหรียญเลือกทีมเสิร์ฟก่อน — popup เหรียญเด้งกลางจอ (หัว = ทีม A, ก้อย = ทีม B)"
-            className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition active:scale-95 disabled:opacity-60 cursor-pointer ${skin.flipBtn}`}
-          >
-            <span
-              aria-hidden="true"
-              className={`w-7 h-7 flex items-center justify-center ${
-                flipState === 'flipping' ? 'animate-coinflip' : flipState === 'done' ? 'animate-coinpop' : ''
-              }`}
+          {/* กลุ่มปุ่ม: จับเหรียญเสิร์ฟก่อน + สุ่มเมนูอาหาร อยู่ด้วยกันในกรอบเดียว */}
+          <div role="group" aria-label="ปุ่มจับเหรียญและสุ่มเมนูอาหาร" className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={onFlip}
+              disabled={flipState === 'flipping'}
+              title="จับเหรียญเลือกทีมเสิร์ฟก่อน — popup เหรียญเด้งกลางจอ (หัว = ทีม A, ก้อย = ทีม B)"
+              className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition active:scale-95 disabled:opacity-60 cursor-pointer ${skin.flipBtn}`}
             >
-              <PixelCoinFace letter={flipFace} className="h-full w-full" />
-            </span>
-            {flipState === 'flipping'
-              ? 'กำลังเหวี่ยง…'
-              : flipState === 'done'
-                ? 'เหวี่ยงใหม่'
-                : 'จับเหรียญเสิร์ฟก่อน'}
-          </button>
-          {/* ปุ่มสุ่มเมนูอาหารหลังตีแบต — สล็อตกาชาปอง 6 เมนูเด้งกลางจอ */}
-          <button
-            type="button"
-            onClick={onFoodRoll}
-            title="สุ่มเมนูอาหารหลังตีแบต — สล็อต 6 เมนูตามโอกาส 45/15/15/10/10/5 (เด้งกลางจอ)"
-            className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition active:scale-95 cursor-pointer ${skin.flipBtn}`}
-          >
-            <span aria-hidden="true" className="w-7 h-7 flex items-center justify-center">
-              <PixelFoodArt menu="congee" className="h-full w-full" />
-            </span>
-            สุ่มเมนูอาหาร
-          </button>
+              <span
+                aria-hidden="true"
+                className={`w-7 h-7 flex items-center justify-center ${
+                  flipState === 'flipping' ? 'animate-coinflip' : flipState === 'done' ? 'animate-coinpop' : ''
+                }`}
+              >
+                <PixelCoinFace letter={flipFace} className="h-full w-full" />
+              </span>
+              {flipState === 'flipping'
+                ? 'กำลังเหวี่ยง…'
+                : flipState === 'done'
+                  ? 'เหวี่ยงใหม่'
+                  : 'จับเหรียญเสิร์ฟก่อน'}
+            </button>
+            {/* ปุ่มสุ่มเมนูอาหารหลังตีแบต — สล็อตกาชาปอง 6 เมนูเด้งกลางจอ */}
+            <button
+              type="button"
+              onClick={onFoodRoll}
+              title="สุ่มเมนูอาหารหลังตีแบต — สล็อต 6 เมนูตามโอกาส 45/15/15/10/10/5 (เด้งกลางจอ)"
+              className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition active:scale-95 cursor-pointer ${skin.flipBtn}`}
+            >
+              <span aria-hidden="true" className="w-7 h-7 flex items-center justify-center">
+                <PixelFoodArt menu="congee" className="h-full w-full" />
+              </span>
+              สุ่มเมนูอาหาร
+            </button>
+          </div>
         </div>
       </div>
     </div>

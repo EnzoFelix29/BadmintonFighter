@@ -1,5 +1,5 @@
 // ============================================================
-// สกิน HUD สกอร์บอร์ดสด (5 แบบ) — ปรับลุคตารางคะแนนสดบนฟอร์มบันทึกผล
+// สกิน HUD สกอร์บอร์ดสด (11 แบบ) — ปรับลุคตารางคะแนนสดบนฟอร์มบันทึกผล
 // เลือกไว้แล้วจะจำค่าใน localStorage key: badminton_hud_skin
 // ============================================================
 
@@ -158,6 +158,160 @@ export const HUD_SKINS: HudSkin[] = [
     heading: 'text-gray-900 dark:text-gray-100',
     btn: 'bg-gray-900 hover:bg-gray-700 text-white rounded-xl dark:bg-white dark:hover:bg-gray-200 dark:text-gray-900',
     modalCard: 'bg-white dark:bg-gray-900 rounded-xl shadow-2xl border border-gray-900 dark:border-gray-600',
+  },
+  {
+    id: 'forest',
+    name: 'ป่าเขียว',
+    tag: 'เขียวธรรมชาติ สดชื่น',
+    chip: 'bg-emerald-100 border border-emerald-400 text-emerald-900 dark:bg-emerald-900 dark:border-emerald-600 dark:text-emerald-200',
+    card:
+      'bg-gradient-to-r from-emerald-50 via-teal-50 to-green-50 border border-emerald-300 rounded-2xl shadow-sm dark:from-emerald-950/60 dark:via-teal-950/50 dark:to-green-950/60 dark:border-emerald-800',
+    nameA: 'text-emerald-800 dark:text-emerald-300',
+    nameB: 'text-teal-800 dark:text-teal-300',
+    score: 'text-emerald-950 dark:text-emerald-50',
+    colon: 'text-emerald-300 dark:text-emerald-700',
+    sub: 'bg-white/80 ring-1 ring-emerald-200 text-emerald-700 dark:bg-emerald-950 dark:ring-emerald-800 dark:text-emerald-200',
+    serve: 'bg-emerald-500 ring-1 ring-emerald-600/40 text-white shadow-sm',
+    flipBtn:
+      'bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-700 hover:to-teal-600 text-white',
+    coin: 'bg-gradient-to-br from-lime-300 to-emerald-500 text-white ring-2 ring-emerald-200/70',
+    page:
+      'bg-gradient-to-br from-emerald-50 via-teal-50 to-green-50 text-emerald-950 dark:from-emerald-950 dark:via-teal-950 dark:to-green-950 dark:text-emerald-50',
+    nav: 'bg-gradient-to-r from-emerald-800 via-emerald-600 to-teal-500 text-white shadow-lg shadow-emerald-900/20',
+    panel:
+      'bg-white rounded-2xl shadow-sm ring-1 ring-emerald-200/70 dark:bg-gray-900 dark:ring-emerald-900',
+    panelIcon: 'rounded-xl bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400',
+    heading: 'text-emerald-900 dark:text-emerald-100',
+    btn: 'bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-700 hover:to-teal-600 text-white rounded-xl shadow-md shadow-emerald-600/25',
+    modalCard: 'bg-white dark:bg-gray-900 rounded-2xl shadow-2xl ring-1 ring-emerald-300/70 dark:ring-emerald-800',
+  },
+  {
+    id: 'sakura',
+    name: 'ซากุระ',
+    tag: 'ชมพูนุ่ม สไตล์ญี่ปุ่น',
+    chip: 'bg-pink-100 border border-pink-300 text-pink-800 dark:bg-pink-950 dark:border-pink-700 dark:text-pink-200',
+    card:
+      'bg-gradient-to-r from-pink-50 via-rose-50 to-fuchsia-50 border border-pink-300 rounded-2xl shadow-sm dark:from-pink-950/60 dark:via-rose-950/50 dark:to-fuchsia-950/60 dark:border-pink-800',
+    nameA: 'text-rose-700 dark:text-rose-300',
+    nameB: 'text-fuchsia-700 dark:text-fuchsia-300',
+    score: 'text-pink-950 dark:text-pink-50',
+    colon: 'text-pink-300 dark:text-pink-700',
+    sub: 'bg-white/80 ring-1 ring-pink-200 text-pink-700 dark:bg-pink-950 dark:ring-pink-800 dark:text-pink-200',
+    serve: 'bg-rose-500 ring-1 ring-rose-600/40 text-white shadow-sm',
+    flipBtn:
+      'bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 text-white',
+    coin: 'bg-gradient-to-br from-rose-200 to-pink-400 text-white ring-2 ring-pink-200/70',
+    page:
+      'bg-gradient-to-br from-pink-50 via-rose-50 to-fuchsia-50 text-pink-950 dark:from-pink-950 dark:via-rose-950 dark:to-fuchsia-950 dark:text-pink-50',
+    nav: 'bg-gradient-to-r from-pink-700 via-rose-500 to-pink-600 text-white shadow-lg shadow-pink-900/20',
+    panel:
+      'bg-white rounded-2xl shadow-sm ring-1 ring-pink-200/70 dark:bg-gray-900 dark:ring-pink-900',
+    panelIcon: 'rounded-xl bg-pink-100 text-pink-600 dark:bg-pink-950 dark:text-pink-400',
+    heading: 'text-pink-900 dark:text-pink-100',
+    btn: 'bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 text-white rounded-xl shadow-md shadow-rose-500/25',
+    modalCard: 'bg-white dark:bg-gray-900 rounded-2xl shadow-2xl ring-1 ring-pink-300/70 dark:ring-pink-800',
+  },
+  {
+    id: 'ocean',
+    name: 'มหาสมุทร',
+    tag: 'ฟ้าคราม ลึกเย็นตา',
+    chip: 'bg-cyan-100 border border-cyan-400 text-cyan-900 dark:bg-cyan-950 dark:border-cyan-700 dark:text-cyan-200',
+    card:
+      'bg-gradient-to-r from-cyan-50 via-sky-50 to-blue-50 border border-cyan-300 rounded-2xl shadow-sm dark:from-cyan-950/60 dark:via-sky-950/50 dark:to-blue-950/60 dark:border-cyan-800',
+    nameA: 'text-cyan-800 dark:text-cyan-300',
+    nameB: 'text-blue-800 dark:text-blue-300',
+    score: 'text-cyan-950 dark:text-cyan-50',
+    colon: 'text-cyan-300 dark:text-cyan-700',
+    sub: 'bg-white/80 ring-1 ring-cyan-200 text-cyan-800 dark:bg-cyan-950 dark:ring-cyan-800 dark:text-cyan-200',
+    serve: 'bg-cyan-500 ring-1 ring-cyan-600/40 text-white shadow-sm',
+    flipBtn:
+      'bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 text-white',
+    coin: 'bg-gradient-to-br from-cyan-300 to-blue-500 text-white ring-2 ring-cyan-200/70',
+    page:
+      'bg-gradient-to-br from-cyan-50 via-sky-50 to-blue-50 text-cyan-950 dark:from-cyan-950 dark:via-sky-950 dark:to-blue-950 dark:text-cyan-50',
+    nav: 'bg-gradient-to-r from-cyan-800 via-sky-600 to-blue-600 text-white shadow-lg shadow-cyan-900/20',
+    panel:
+      'bg-white rounded-2xl shadow-sm ring-1 ring-cyan-200/70 dark:bg-gray-900 dark:ring-cyan-900',
+    panelIcon: 'rounded-xl bg-cyan-100 text-cyan-700 dark:bg-cyan-950 dark:text-cyan-400',
+    heading: 'text-cyan-900 dark:text-cyan-100',
+    btn: 'bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 text-white rounded-xl shadow-md shadow-cyan-600/25',
+    modalCard: 'bg-white dark:bg-gray-900 rounded-2xl shadow-2xl ring-1 ring-cyan-300/70 dark:ring-cyan-800',
+  },
+  {
+    id: 'lava',
+    name: 'ลาวา',
+    tag: 'แดงเพลิง บนพื้นดำ',
+    chip: 'bg-gray-950 border border-orange-500 text-orange-300',
+    card:
+      'bg-gray-950 border-2 border-orange-500/70 rounded-2xl shadow-[0_0_18px_rgba(249,115,22,0.35)]',
+    nameA: 'text-orange-300 drop-shadow-[0_0_6px_rgba(251,146,60,0.9)]',
+    nameB: 'text-red-400 drop-shadow-[0_0_6px_rgba(248,113,113,0.9)]',
+    score: 'text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.55)]',
+    colon: 'text-orange-500',
+    sub: 'bg-orange-500/10 ring-1 ring-orange-500/40 text-orange-200',
+    serve: 'bg-orange-500 ring-1 ring-orange-400/60 text-white drop-shadow-[0_0_6px_rgba(249,115,22,0.8)]',
+    flipBtn:
+      'bg-orange-600 hover:bg-orange-500 text-white shadow-[0_0_14px_rgba(249,115,22,0.6)]',
+    coin: 'bg-gradient-to-br from-orange-400 to-red-600 text-white ring-2 ring-orange-300/60',
+    page:
+      'bg-gray-950 bg-[radial-gradient(ellipse_at_top,rgba(249,115,22,0.16),transparent_55%)] text-gray-100',
+    nav: 'bg-gray-950/90 backdrop-blur border-b-2 border-orange-500/60 text-white shadow-[0_0_18px_rgba(249,115,22,0.35)]',
+    panel: 'bg-gray-950 rounded-2xl border-2 border-orange-500/70 shadow-[0_0_18px_rgba(249,115,22,0.3)]',
+    panelIcon: 'rounded-xl bg-orange-500/15 text-orange-300 ring-1 ring-orange-500/50',
+    heading: 'text-orange-100 drop-shadow-[0_0_8px_rgba(251,146,60,0.45)]',
+    btn: 'bg-orange-600 hover:bg-orange-500 text-white rounded-xl shadow-[0_0_14px_rgba(249,115,22,0.6)]',
+    modalCard: 'bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border-2 border-orange-500/80',
+  },
+  {
+    id: 'galaxy',
+    name: 'กาแล็กซี',
+    tag: 'ม่วงอวกาศ ดาวระยิบ',
+    chip: 'bg-indigo-950 border border-violet-400 text-violet-300',
+    card:
+      'bg-indigo-950 border-2 border-violet-500/60 rounded-2xl shadow-[0_0_18px_rgba(139,92,246,0.35)] bg-[radial-gradient(circle_at_20%_20%,rgba(139,92,246,0.18),transparent_45%)]',
+    nameA: 'text-violet-300 drop-shadow-[0_0_6px_rgba(196,181,253,0.9)]',
+    nameB: 'text-sky-300 drop-shadow-[0_0_6px_rgba(125,211,252,0.9)]',
+    score: 'text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.6)]',
+    colon: 'text-violet-400',
+    sub: 'bg-violet-500/10 ring-1 ring-violet-500/40 text-violet-200',
+    serve: 'bg-violet-500 ring-1 ring-violet-400/60 text-white drop-shadow-[0_0_6px_rgba(139,92,246,0.8)]',
+    flipBtn:
+      'bg-violet-600 hover:bg-violet-500 text-white shadow-[0_0_14px_rgba(139,92,246,0.6)]',
+    coin: 'bg-gradient-to-br from-violet-400 to-indigo-600 text-white ring-2 ring-violet-300/60',
+    page:
+      'bg-indigo-950 bg-[radial-gradient(ellipse_at_top,rgba(139,92,246,0.22),transparent_55%)] text-indigo-50',
+    nav: 'bg-indigo-950/90 backdrop-blur border-b-2 border-violet-500/60 text-white shadow-[0_0_18px_rgba(139,92,246,0.35)]',
+    panel: 'bg-indigo-950 rounded-2xl border-2 border-violet-500/60 shadow-[0_0_18px_rgba(139,92,246,0.3)]',
+    panelIcon: 'rounded-xl bg-violet-500/15 text-violet-300 ring-1 ring-violet-500/50',
+    heading: 'text-white drop-shadow-[0_0_8px_rgba(221,214,254,0.45)]',
+    btn: 'bg-violet-600 hover:bg-violet-500 text-white rounded-xl shadow-[0_0_14px_rgba(139,92,246,0.6)]',
+    modalCard: 'bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border-2 border-violet-500/70',
+  },
+  {
+    id: 'candy',
+    name: 'ลูกกวาด',
+    tag: 'พาสเทลสายรุ้ง สดใส',
+    chip: 'bg-gradient-to-r from-pink-200 via-yellow-100 to-sky-200 border border-pink-300 text-pink-900',
+    card:
+      'bg-gradient-to-r from-pink-50 via-yellow-50 to-sky-50 border-2 border-pink-300 rounded-2xl shadow-sm dark:from-pink-950/50 dark:via-yellow-950/40 dark:to-sky-950/50 dark:border-pink-700',
+    nameA: 'text-pink-600 dark:text-pink-300',
+    nameB: 'text-sky-600 dark:text-sky-300',
+    score: 'text-gray-800 dark:text-gray-100',
+    colon: 'text-yellow-500 dark:text-yellow-600',
+    sub: 'bg-white/80 ring-1 ring-pink-200 text-pink-700 dark:bg-pink-950 dark:ring-pink-800 dark:text-pink-200',
+    serve: 'bg-gradient-to-r from-pink-500 to-orange-400 text-white shadow-sm',
+    flipBtn:
+      'bg-gradient-to-r from-pink-500 via-fuchsia-500 to-sky-500 hover:from-pink-600 hover:via-fuchsia-600 hover:to-sky-600 text-white',
+    coin: 'bg-gradient-to-br from-yellow-200 to-pink-400 text-white ring-2 ring-pink-200/70',
+    page:
+      'bg-gradient-to-br from-pink-50 via-yellow-50 to-sky-50 text-gray-800 dark:from-pink-950 dark:via-yellow-950 dark:to-sky-950 dark:text-gray-100',
+    nav: 'bg-gradient-to-r from-pink-500 via-fuchsia-500 to-sky-500 text-white shadow-lg shadow-pink-900/20',
+    panel:
+      'bg-white/90 rounded-2xl shadow-sm ring-2 ring-pink-200/70 dark:bg-gray-900 dark:ring-pink-800',
+    panelIcon: 'rounded-xl bg-pink-100 text-pink-600 dark:bg-pink-950 dark:text-pink-400',
+    heading: 'text-gray-800 dark:text-gray-100',
+    btn: 'bg-gradient-to-r from-pink-500 via-fuchsia-500 to-sky-500 hover:from-pink-600 hover:via-fuchsia-600 hover:to-sky-600 text-white rounded-xl shadow-md shadow-pink-500/25',
+    modalCard: 'bg-white dark:bg-gray-900 rounded-2xl shadow-2xl ring-2 ring-pink-300/70 dark:ring-pink-700',
   },
 ];
 

@@ -1,0 +1,1396 @@
+     1→'use client';
+     2→
+     3→import { useEffect, useRef, useState } from 'react';
+     4→import { useTheme } from 'next-themes';
+     5→import { getSkin, type Skin } from '@/lib/characters';
+     6→import { getGear, type GearKind, type GearSkin } from '@/lib/gear';
+     7→import {
+     8→  awardCoins,
+     9→  deletePlayer,
+    10→  loadPlayers,
+    11→  purchaseGear,
+    12→  registerPlayer,
+    13→  updateProfile,
+    14→  type PlayerProfile,
+    15→} from '@/lib/players';
+    16→import { PixelAvatar, TeamPlayersAvatar, type PlayerInfo } from '@/components/pixel-avatar';
+    17→import { WinRateRing } from '@/components/win-rate-ring';
+    18→import { CharacterPicker, type PickerSlot } from '@/components/character-picker';
+    19→import { GearPixel } from '@/components/gear-pixel';
+    20→import { SkinReel } from '@/components/skin-reel';
+    21→import { ShopModal } from '@/components/shop-modal';
+    22→import { PinModal } from '@/components/pin-modal';
+    23→import { RegisterModal, type RosterAction } from '@/components/register-modal';
+    24→
+    25→// รหัส PIN ผู้ดูแลระบบ (6 หลัก) — ต้องใส่รหัสนี้ก่อนล้างข้อมูลสถิติทั้งหมดเสมอ
+    26→const ADMIN_CLEAR_PIN = '291036';
+    27→
+    28→interface PlayerSlot {
+    29→  name: string; // ชื่อผู้เล่นที่เลือกจากรายชื่อที่ลงทะเบียนไว้ ('' = ยังไม่เลือก)
+    30→}
+    31→
+    32→// สิ่งที่จะทำต่อทันทีเมื่อยืนยันรหัส PIN สำเร็จ (ล็อคอินแก้ไขสกินของตัวเอง)
+    33→interface PinIntent {
+    34→  kind: RosterAction | 'reel' | 'picker';
+    35→  slot?: PickerSlot;
+    36→}
+    37→
+    38→interface PinRequest {
+    39→  name: string;
+    40→  mode: 'verify' | 'set';
+    41→  intent: PinIntent | null;
+    42→  seq: number; // บังคับ remount โมดอล PIN ทุกครั้งที่เปิด
+    43→}
+    44→
+    45→interface Match {
+    46→  id: number;
+    47→  court: string;
+    48→  type: string;
+    49→  teamA: string;
+    50→  teamB: string;
+    51→  playersA?: PlayerInfo[];
+    52→  playersB?: PlayerInfo[];
+    53→  scoreA: number;
+    54→  scoreB: number;
+    55→  maxScore: string;
+    56→  date?: string;
+    57→}
+    58→
+    59→interface TeamStat {
+    60→  name: string;
+    61→  played: number;
+    62→  win: number;
+    63→  lose: number;
+    64→}
+    65→
+    66→interface RankedTeam extends TeamStat {
+    67→  winRate: number;
+    68→}
+    69→
+    70→// วันที่วันนี้ตามเวลาท้องถิ่น (รูปแบบ yyyy-mm-dd สำหรับ date input)
+    71→function todayISO(): string {
+    72→  const d = new Date();
+    73→  const y = d.getFullYear();
+    74→  const m = String(d.getMonth() + 1).padStart(2, '0');
+    75→  const day = String(d.getDate()).padStart(2, '0');
+    76→  return `${y}-${m}-${day}`;
+    77→}
+    78→
+    79→// แปลงเป็นรูปแบบไทย ด/ด/ดดด พ.ศ.
+    80→function formatThaiDate(iso?: string): string {
+    81→  if (!iso) return '-';
+    82→  const parts = iso.split('-');
+    83→  if (parts.length !== 3) return iso;
+    84→  const [y, m, d] = parts.map(Number);
+    85→  if (!y || !m || !d) return iso;
+    86→  return `${d}/${m}/${y + 543}`;
+    87→}
+    88→
+    89→// สีตราอันดับ: ทอง / เงิน / ทองแดง / ธรรมดา
+    90→function rankBadgeClass(index: number): string {
+    91→  if (index === 0) return 'bg-gradient-to-br from-amber-300 to-yellow-500 text-white shadow-amber-400/40';
+    92→  if (index === 1) return 'bg-gradient-to-br from-slate-300 to-slate-400 text-white shadow-slate-400/40';
+    93→  if (index === 2) return 'bg-gradient-to-br from-orange-300 to-amber-700 text-white shadow-orange-400/40';
+    94→  return 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400';
+    95→}
+    96→
+    97→type SoundKind = 'success' | 'error' | 'open' | 'clear' | 'select' | 'tick';
+    98→
+    99→// แถวผู้เล่น 1 คน: ปุ่มอวตาร (คลิกเปิดตู้ Reel — ยืนยัน PIN ก่อน)
+   100→// + ช่องเลือกชื่อจากผู้เล่นที่ลงทะเบียนไว้ (สกินโหลดตามโปรไฟล์อัตโนมัติ) + ลิงก์เปลี่ยนตัวละคร
+   101→function PlayerSlotField({
+   102→  id,
+   103→  label,
+   104→  slot,
+   105→  profile,
+   106→  players,
+   107→  takenNames,
+   108→  accent,
+   109→  onSelectName,
+   110→  onOpenPicker,
+   111→  onOpenReel,
+   112→  onOpenRegister,
+   113→}: {
+   114→  id: string;
+   115→  label: string;
+   116→  slot: PlayerSlot;
+   117→  profile?: PlayerProfile;
+   118→  players: PlayerProfile[];
+   119→  takenNames: string[]; // ชื่อที่ถูกใช้อยู่ในสล็อตอื่นของแมตช์นี้
+   120→  accent: 'blue' | 'rose';
+   121→  onSelectName: (name: string) => void;
+   122→  onOpenPicker: () => void;
+   123→  onOpenReel: () => void;
+   124→  onOpenRegister: () => void;
+   125→}) {
+   126→  const styles =
+   127→    accent === 'blue'
+   128→      ? {
+   129→          border: 'border-blue-200 dark:border-blue-800',
+   130→          btnBg: 'from-blue-50 to-blue-100 dark:from-blue-900/60 dark:to-blue-950',
+   131→          input:
+   132→            'bg-white border-blue-200 text-blue-700 focus:ring-blue-400 dark:bg-blue-950/50 dark:text-blue-300',
+   133→          link: 'text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300',
+   134→        }
+   135→      : {
+   136→          border: 'border-rose-200 dark:border-rose-900',
+   137→          btnBg: 'from-rose-50 to-rose-100 dark:from-rose-900/60 dark:to-rose-950',
+   138→          input:
+   139→            'bg-white border-rose-200 text-rose-700 focus:ring-rose-400 dark:bg-rose-950/40 dark:text-rose-300',
+   140→          link: 'text-rose-500 hover:text-rose-700 dark:text-rose-400 dark:hover:text-rose-300',
+   141→        };
+   142→
+   143→  const skin = profile ? getSkin(profile.skinId) : undefined;
+   144→  const racket = profile ? getGear(profile.racketId) : undefined;
+   145→  const shoe = profile ? getGear(profile.shoeId) : undefined;
+   146→
+   147→  return (
+   148→    <div>
+   149→      <div className="flex items-center justify-between mb-1">
+   150→        <label htmlFor={id} className="text-xs font-medium text-gray-500 dark:text-gray-400">
+   151→          {label}
+   152→        </label>
+   153→        <button
+   154→          type="button"
+   155→          onClick={onOpenPicker}
+   156→          className={`text-[10px] font-semibold transition cursor-pointer ${styles.link}`}
+   157→        >
+   158→          <i className="fa-solid fa-user-pen mr-0.5"></i>เปลี่ยนตัวละคร
+   159→        </button>
+   160→      </div>
+   161→      <div className="flex items-stretch gap-2">
+   162→        <button
+   163→          type="button"
+   164→          onClick={onOpenReel}
+   165→          aria-label={`เปลี่ยนสกินไม้แบดและรองเท้าของ${label}`}
+   166→          title={
+   167→            profile
+   168→              ? 'เปิดตู้ Reel เปลี่ยนสกินไม้แบด / รองเท้า (ต้องยืนยันรหัส PIN ของเจ้าของ)'
+   169→              : 'เลือกผู้เล่นก่อน'
+   170→          }
+   171→          className={`relative shrink-0 w-11 rounded-xl border bg-gradient-to-b ${styles.border} ${styles.btnBg} flex items-center justify-center transition hover:ring-2 hover:ring-blue-400/50 focus:ring-2 focus:ring-blue-400 outline-none cursor-pointer`}
+   172→        >
+   173→          {skin && <PixelAvatar skin={skin} size={34} />}
+   174→          {racket && (
+   175→            <span className="absolute -bottom-1 -right-1 w-[18px] h-[18px] rounded-md bg-white dark:bg-gray-800 ring-1 ring-gray-200 dark:ring-gray-600 flex items-center justify-center shadow-sm">
+   176→              <GearPixel gear={racket} size={12} />
+   177→            </span>
+   178→          )}
+   179→          {shoe && (
+   180→            <span className="absolute -bottom-1 -left-1 w-[18px] h-[18px] rounded-md bg-white dark:bg-gray-800 ring-1 ring-gray-200 dark:ring-gray-600 flex items-center justify-center shadow-sm">
+   181→              <GearPixel gear={shoe} size={12} />
+   182→            </span>
+   183→          )}
+   184→        </button>
+   185→        <select
+   186→          id={id}
+   187→          value={slot.name}
+   188→          onChange={(e) => {
+   189→            if (e.target.value === '__register') onOpenRegister();
+   190→            else onSelectName(e.target.value);
+   191→          }}
+   192→          className={`flex-1 min-w-0 border rounded-xl px-3 py-2 text-sm font-semibold outline-none transition focus:ring-2 cursor-pointer ${styles.border} ${styles.input}`}
+   193→        >
+   194→          <option value="">— เลือกผู้เล่น —</option>
+   195→          {players.map((p) => {
+   196→            const taken = takenNames.includes(p.name);
+   197→            return (
+   198→              <option key={p.name} value={p.name} disabled={taken}>
+   199→                {p.name} • {p.coins} เหรียญ{taken ? ' (เล่นอยู่)' : ''}
+   200→              </option>
+   201→            );
+   202→          })}
+   203→          <option value="__register">＋ ลงทะเบียนผู้เล่นใหม่…</option>
+   204→        </select>
+   205→      </div>
+   206→    </div>
+   207→  );
+   208→}
+   209→
+   210→export default function Home() {
+   211→  const [matches, setMatches] = useState<Match[]>([]);
+   212→  const [teamStats, setTeamStats] = useState<Record<string, TeamStat>>({});
+   213→
+   214→  // ฟอร์มกรอกข้อมูล
+   215→  const [court, setCourt] = useState('');
+   216→  const [type, setType] = useState('เดี่ยว');
+   217→  const [maxScore, setMaxScore] = useState('21');
+   218→  // ผู้เล่น 4 สล็อต: เดี่ยวใช้ A1/B1, คู่ใช้ครบทุกสล็อต — เลือกชื่อจากผู้เล่นที่ลงทะเบียนไว้
+   219→  const [slotA1, setSlotA1] = useState<PlayerSlot>({ name: '' });
+   220→  const [slotA2, setSlotA2] = useState<PlayerSlot>({ name: '' });
+   221→  const [slotB1, setSlotB1] = useState<PlayerSlot>({ name: '' });
+   222→  const [slotB2, setSlotB2] = useState<PlayerSlot>({ name: '' });
+   223→  const [pickerSlot, setPickerSlot] = useState<PickerSlot | null>(null);
+   224→  const [reelSlot, setReelSlot] = useState<PickerSlot | null>(null);
+   225→
+   226→  // ระบบสมาชิก: โปรไฟล์ผู้เล่น (เหรียญ + สกินรายบุคคล) + รหัส PIN 6 หลัก + ร้านค้ารายบุคคล
+   227→  const [players, setPlayers] = useState<PlayerProfile[]>([]);
+   228→  const [unlockedNames, setUnlockedNames] = useState<string[]>([]); // ยืนยัน PIN แล้วในเซสชันนี้
+   229→  const [pinReq, setPinReq] = useState<PinRequest | null>(null);
+   230→  const [registerOpen, setRegisterOpen] = useState(false);
+   231→  const [registerBackTo, setRegisterBackTo] = useState<PickerSlot | null>(null);
+   232→  const [shopFor, setShopFor] = useState<string | null>(null); // ชื่อผู้เล่นที่เปิดร้านค้า
+   233→  // โมดอล PIN ก่อนล้างข้อมูล (ต้องใส่รหัสผู้ดูแลระบบ 6 หลัก)
+   234→  const [clearPinOpen, setClearPinOpen] = useState(false);
+   235→  const [clearPinSeq, setClearPinSeq] = useState(0); // บังคับ remount โมดอล PIN ทุกครั้งที่เปิด
+   236→  const [scoreA, setScoreA] = useState('');
+   237→  const [scoreB, setScoreB] = useState('');
+   238→  const [matchDate, setMatchDate] = useState('');
+   239→
+   240→  // UI state
+   241→  const [alertMsg, setAlertMsg] = useState<{ msg: string; isError: boolean } | null>(null);
+   242→  const [modalOpen, setModalOpen] = useState(false);
+   243→  const [mounted, setMounted] = useState(false);
+   244→  const [soundMuted, setSoundMuted] = useState(false);
+   245→  const alertTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+   246→  const exportableRef = useRef<HTMLDivElement>(null);
+   247→  const soundMutedRef = useRef(false);
+   248→  const audioCtxRef = useRef<AudioContext | null>(null);
+   249→
+   250→  // Theme (light/dark)
+   251→  const { resolvedTheme, setTheme } = useTheme();
+   252→
+   253→  useEffect(() => {
+   254→    setMounted(true);
+   255→    // ตั้งค่าวันที่เริ่มต้นเป็นวันนี้ (real time)
+   256→    setMatchDate(todayISO());
+   257→    // โหลดสถานะเสียง
+   258→    try {
+   259→      const muted = localStorage.getItem('badminton_sound') === 'off';
+   260→      soundMutedRef.current = muted;
+   261→      setSoundMuted(muted);
+   262→    } catch {
+   263→      // ไม่มี localStorage ใช้ค่าเริ่มต้น
+   264→    }
+   265→    try {
+   266→      const savedMatches = localStorage.getItem('badminton_matches');
+   267→      const savedStats = localStorage.getItem('badminton_teamStats');
+   268→      if (savedMatches && savedStats) {
+   269→        setMatches(JSON.parse(savedMatches));
+   270→        setTeamStats(JSON.parse(savedStats));
+   271→      }
+   272→    } catch {
+   273→      // ข้อมูลเสียหาย ไม่ต้องโหลด
+   274→    }
+   275→    // โหลดโปรไฟล์ผู้เล่นที่ลงทะเบียนไว้ (ชื่อ / PIN / เหรียญ / สกินรายบุคคล)
+   276→    setPlayers(loadPlayers());
+   277→    return () => {
+   278→      if (alertTimer.current) clearTimeout(alertTimer.current);
+   279→    };
+   280→  }, []);
+   281→
+   282→  // เซฟโปรไฟล์ผู้เล่นทุกครั้งที่เปลี่ยน (ชื่อ / PIN / เหรียญ / สกินเป็นของรายบุคคล)
+   283→  useEffect(() => {
+   284→    if (!mounted) return;
+   285→    try {
+   286→      localStorage.setItem('badminton_players', JSON.stringify(players));
+   287→    } catch {
+   288→      // บันทึกไม่ได้ก็ข้าม
+   289→    }
+   290→  }, [players, mounted]);
+   291→
+   292→  // ===== ระบบเสียงเอฟเฟกต์ (Web Audio API — สังเคราะห์เสียงสด ไม่ต้องโหลดไฟล์) =====
+   293→  function getAudioCtx(): AudioContext | null {
+   294→    try {
+   295→      if (!audioCtxRef.current) {
+   296→        const AC =
+   297→          window.AudioContext ||
+   298→          (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+   299→        if (!AC) return null;
+   300→        audioCtxRef.current = new AC();
+   301→      }
+   302→      if (audioCtxRef.current.state === 'suspended') {
+   303→        void audioCtxRef.current.resume();
+   304→      }
+   305→      return audioCtxRef.current;
+   306→    } catch {
+   307→      return null;
+   308→    }
+   309→  }
+   310→
+   311→  function playTone(
+   312→    ctx: AudioContext,
+   313→    freq: number,
+   314→    start: number,
+   315→    duration: number,
+   316→    type: OscillatorType = 'sine',
+   317→    volume = 0.12
+   318→  ) {
+   319→    const osc = ctx.createOscillator();
+   320→    const gain = ctx.createGain();
+   321→    const t0 = ctx.currentTime + start;
+   322→    osc.type = type;
+   323→    osc.frequency.setValueAtTime(freq, t0);
+   324→    gain.gain.setValueAtTime(0.0001, t0);
+   325→    gain.gain.exponentialRampToValueAtTime(volume, t0 + 0.02);
+   326→    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + duration);
+   327→    osc.connect(gain);
+   328→    gain.connect(ctx.destination);
+   329→    osc.start(t0);
+   330→    osc.stop(t0 + duration + 0.05);
+   331→  }
+   332→
+   333→  function playSound(kind: SoundKind) {
+   334→    if (soundMutedRef.current) return;
+   335→    const ctx = getAudioCtx();
+   336→    if (!ctx) return;
+   337→    switch (kind) {
+   338→      case 'success': // บันทึกสำเร็จ: เสียงเหรียญเกม 8-bit ไล่โน้ตขึ้น E5 → G5 → C6
+   339→        playTone(ctx, 659.25, 0, 0.08, 'square', 0.05);
+   340→        playTone(ctx, 783.99, 0.08, 0.08, 'square', 0.05);
+   341→        playTone(ctx, 1046.5, 0.16, 0.25, 'square', 0.05);
+   342→        break;
+   343→      case 'select': // เลือกตัวละคร: บลิปสั้นแบบ 8-bit
+   344→        playTone(ctx, 880, 0, 0.06, 'square', 0.045);
+   345→        playTone(ctx, 1174.66, 0.06, 0.1, 'square', 0.045);
+   346→        break;
+   347→      case 'error': // กรอกไม่ครบ/ผิดพลาด: เสียงต่ำสั้น 2 จังหวะ
+   348→        playTone(ctx, 233.08, 0, 0.15, 'square', 0.05);
+   349→        playTone(ctx, 174.61, 0.13, 0.22, 'square', 0.05);
+   350→        break;
+   351→      case 'open': // เปิดสรุปภาพรวม: โน้ตคู่สั้นเบา
+   352→        playTone(ctx, 523.25, 0, 0.09, 'sine', 0.07);
+   353→        playTone(ctx, 659.25, 0.07, 0.12, 'sine', 0.07);
+   354→        break;
+   355→      case 'clear': // ล้างข้อมูล: ไล่โน้ตลง
+   356→        playTone(ctx, 659.25, 0, 0.1, 'triangle', 0.07);
+   357→        playTone(ctx, 523.25, 0.09, 0.1, 'triangle', 0.07);
+   358→        playTone(ctx, 392, 0.18, 0.2, 'triangle', 0.07);
+   359→        break;
+   360→      case 'tick': // เสียงรีลหมุนทีละช่อง (เบา ๆ)
+   361→        playTone(ctx, 1318.5, 0, 0.03, 'square', 0.018);
+   362→        break;
+   363→    }
+   364→  }
+   365→
+   366→  function toggleSound() {
+   367→    const next = !soundMutedRef.current;
+   368→    soundMutedRef.current = next;
+   369→    setSoundMuted(next);
+   370→    try {
+   371→      localStorage.setItem('badminton_sound', next ? 'off' : 'on');
+   372→    } catch {
+   373→      // บันทึกไม่ได้ก็ข้าม
+   374→    }
+   375→    if (!next) playSound('open'); // เสียงตอบกลับตอนเปิดเสียง
+   376→  }
+   377→
+   378→  function toggleTheme() {
+   379→    setTheme(resolvedTheme === 'dark' ? 'light' : 'dark');
+   380→  }
+   381→
+   382→  function showAlert(msg: string, isError = true) {
+   383→    setAlertMsg({ msg, isError });
+   384→    playSound(isError ? 'error' : 'success');
+   385→    if (alertTimer.current) clearTimeout(alertTimer.current);
+   386→    alertTimer.current = setTimeout(() => setAlertMsg(null), 3000);
+   387→  }
+   388→
+   389→  // ฟังก์ชันเซฟข้อมูลลง Local Storage
+   390→  function saveDataToLocal(newMatches: Match[], newStats: Record<string, TeamStat>) {
+   391→    localStorage.setItem('badminton_matches', JSON.stringify(newMatches));
+   392→    localStorage.setItem('badminton_teamStats', JSON.stringify(newStats));
+   393→  }
+   394→
+   395→  // ล้างข้อมูลทั้งหมด: กดปุ่มแล้วต้องยืนยันรหัส PIN ผู้ดูแลระบบ 6 หลักก่อนเสมอ
+   396→  function requestClearData() {
+   397→    setClearPinSeq((s) => s + 1);
+   398→    setClearPinOpen(true);
+   399→    playSound('open');
+   400→  }
+   401→
+   402→  function doClearData() {
+   403→    localStorage.removeItem('badminton_matches');
+   404→    localStorage.removeItem('badminton_teamStats');
+   405→    setMatches([]);
+   406→    setTeamStats({});
+   407→    showAlert('ล้างข้อมูลเรียบร้อยแล้ว', false);
+   408→    playSound('clear');
+   409→  }
+   410→
+   411→  // ===== ระบบสมาชิก: ลงทะเบียน / รหัส PIN / เหรียญและสกินรายบุคคล =====
+   412→
+   413→  const slotStateMap: Record<PickerSlot, PlayerSlot> = { A1: slotA1, A2: slotA2, B1: slotB1, B2: slotB2 };
+   414→  const slotSetterMap: Record<PickerSlot, (s: PlayerSlot) => void> = {
+   415→    A1: setSlotA1,
+   416→    A2: setSlotA2,
+   417→    B1: setSlotB1,
+   418→    B2: setSlotB2,
+   419→  };
+   420→
+   421→  // โปรไฟล์ของผู้เล่นในสล็อต
+   422→  function profileOf(slot: PlayerSlot): PlayerProfile | undefined {
+   423→    return players.find((p) => p.name === slot.name);
+   424→  }
+   425→
+   426→  // เรียกยืนยันรหัส PIN ก่อนแก้ไขสกินของผู้เล่น (ถ้าล็อคอินแล้วในเซสชันนี้ข้ามได้เลย)
+   427→  function requireUnlock(name: string, intent: PinIntent) {
+   428→    if (unlockedNames.includes(name)) {
+   429→      runIntent(name, intent);
+   430→      return;
+   431→    }
+   432→    setPinReq({ name, mode: 'verify', intent, seq: Date.now() });
+   433→  }
+   434→
+   435→  function runIntent(name: string, intent: PinIntent) {
+   436→    if (intent.kind === 'reel' && intent.slot) {
+   437→      setReelSlot(intent.slot);
+   438→      playSound('open');
+   439→    } else if (intent.kind === 'picker' && intent.slot) {
+   440→      setPickerSlot(intent.slot);
+   441→      playSound('open');
+   442→    } else if (intent.kind === 'shop') {
+   443→      setShopFor(name);
+   444→      playSound('open');
+   445→    } else if (intent.kind === 'delete') {
+   446→      removePlayer(name);
+   447→    }
+   448→  }
+   449→
+   450→  // รหัส PIN ถูกต้อง → ปลดล็อคโปรไฟล์ / บันทึกรหัสใหม่
+   451→  function handlePinSuccess(pin: string) {
+   452→    if (!pinReq) return;
+   453→    const { name, mode, intent } = pinReq;
+   454→    setPinReq(null);
+   455→    if (mode === 'set') {
+   456→      setPlayers((ps) => updateProfile(ps, name, { pin }));
+   457→      showAlert('เปลี่ยนรหัส PIN เรียบร้อยแล้ว', false);
+   458→      return;
+   459→    }
+   460→    setUnlockedNames((u) => (u.includes(name) ? u : [...u, name]));
+   461→    playSound('select');
+   462→    if (intent) runIntent(name, intent);
+   463→  }
+   464→
+   465→  // ลงทะเบียนผู้เล่นใหม่ (คืนข้อความ error, '' = สำเร็จ)
+   466→  function handleRegister(rawName: string, pin: string): string {
+   467→    const res = registerPlayer(players, rawName, pin);
+   468→    if (!res.ok) return res.error ?? 'ลงทะเบียนไม่สำเร็จ';
+   469→    const name = res.players[res.players.length - 1].name;
+   470→    setPlayers(res.players);
+   471→    // ถ้าเปิดฟอร์มลงทะเบียนจากช่องผู้เล่น → เลือกชื่อให้สล็อตนั้นทันที
+   472→    if (registerBackTo) {
+   473→      slotSetterMap[registerBackTo]({ name });
+   474→      setRegisterBackTo(null);
+   475→    }
+   476→    return '';
+   477→  }
+   478→
+   479→  function removePlayer(name: string) {
+   480→    setPlayers((ps) => deletePlayer(ps, name));
+   481→    setSlotA1((s) => (s.name === name ? { name: '' } : s));
+   482→    setSlotA2((s) => (s.name === name ? { name: '' } : s));
+   483→    setSlotB1((s) => (s.name === name ? { name: '' } : s));
+   484→    setSlotB2((s) => (s.name === name ? { name: '' } : s));
+   485→    setUnlockedNames((u) => u.filter((n) => n !== name));
+   486→    if (shopFor === name) setShopFor(null);
+   487→    if (reelSlot && slotStateMap[reelSlot].name === name) setReelSlot(null);
+   488→    if (pickerSlot && slotStateMap[pickerSlot].name === name) setPickerSlot(null);
+   489→    showAlert(`ลบผู้เล่น "${name}" เรียบร้อยแล้ว`, false);
+   490→  }
+   491→
+   492→  // ปุ่มในโมดอลลงทะเบียน: ร้านค้า / ลบ (ยังไม่ล็อคอิน → ขอรหัส PIN ก่อน)
+   493→  function rosterAction(name: string, action: RosterAction) {
+   494→    if (action === 'delete') {
+   495→      if (unlockedNames.includes(name)) {
+   496→        if (window.confirm(`ลบผู้เล่น "${name}" พร้อมเหรียญและสกินทั้งหมด? ย้อนกลับไม่ได้`)) {
+   497→          removePlayer(name);
+   498→        }
+   499→      } else {
+   500→        setPinReq({ name, mode: 'verify', intent: { kind: 'delete' }, seq: Date.now() });
+   501→      }
+   502→      return;
+   503→    }
+   504→    requireUnlock(name, { kind: 'shop' });
+   505→  }
+   506→
+   507→  // คลิกช่องตัวละคร → ตู้ Reel (ต้องเลือกผู้เล่น + ยืนยัน PIN ก่อน)
+   508→  function openSlotReel(slotKey: PickerSlot) {
+   509→    const name = slotStateMap[slotKey].name;
+   510→    if (!name) return showAlert('กรุณาเลือกผู้เล่นในช่องนี้ก่อน');
+   511→    requireUnlock(name, { kind: 'reel', slot: slotKey });
+   512→  }
+   513→
+   514→  // ลิงก์เปลี่ยนตัวละคร (ต้องเลือกผู้เล่น + ยืนยัน PIN ก่อน)
+   515→  function openSlotPicker(slotKey: PickerSlot) {
+   516→    const name = slotStateMap[slotKey].name;
+   517→    if (!name) return showAlert('กรุณาเลือกผู้เล่นในช่องนี้ก่อน');
+   518→    requireUnlock(name, { kind: 'picker', slot: slotKey });
+   519→  }
+   520→
+   521→  // เปิดฟอร์มลงทะเบียนจากช่องผู้เล่น (ลงทะเบียนเสร็จจะเลือกชื่อให้อัตโนมัติ)
+   522→  function openRegisterFor(slotKey: PickerSlot) {
+   523→    setRegisterBackTo(slotKey);
+   524→    setRegisterOpen(true);
+   525→    playSound('open');
+   526→  }
+   527→
+   528→  // เลือกสกินตัวละคร → บันทึกเป็นค่าเริ่มต้นของผู้เล่นคนนั้น
+   529→  function pickCharacter(skin: Skin) {
+   530→    if (!pickerSlot) return;
+   531→    const name = slotStateMap[pickerSlot].name;
+   532→    if (!name) return;
+   533→    setPlayers((ps) => updateProfile(ps, name, { skinId: skin.id }));
+   534→    setPickerSlot(null);
+   535→    playSound('select');
+   536→  }
+   537→
+   538→  // เลือกสกินอุปกรณ์จากตู้ Reel → บันทึกเป็นค่าเริ่มต้นของผู้เล่นคนนั้น
+   539→  function pickGear(kind: GearKind, gear: GearSkin) {
+   540→    if (!reelSlot) return;
+   541→    const name = slotStateMap[reelSlot].name;
+   542→    if (!name) return;
+   543→    setPlayers((ps) =>
+   544→      updateProfile(ps, name, kind === 'racket' ? { racketId: gear.id } : { shoeId: gear.id })
+   545→    );
+   546→    playSound('select');
+   547→  }
+   548→
+   549→  // แตะสกินล็อคในรีล → เปิดร้านค้าของผู้เล่นคนนี้ (รีลยังเปิดอยู่)
+   550→  function lockedGearPick() {
+   551→    if (!reelSlot) return;
+   552→    const name = slotStateMap[reelSlot].name;
+   553→    if (!name) return;
+   554→    setShopFor(name);
+   555→    playSound('open');
+   556→  }
+   557→
+   558→  // ซื้อสกินจากร้านค้าด้วยเหรียญรายบุคคล (100 เหรียญ/สกิน)
+   559→  function buyGear(gear: GearSkin) {
+   560→    if (!shopFor) return;
+   561→    const res = purchaseGear(players, shopFor, gear);
+   562→    if (!res.ok) return showAlert(res.error ?? 'ซื้อสกินไม่สำเร็จ');
+   563→    setPlayers(res.players);
+   564→    playSound('success');
+   565→    showAlert(`ปลดล็อค "${gear.name}" สำเร็จ!`, false);
+   566→  }
+   567→
+   568→  // สลับประเภทการตี เดี่ยว/คู่ (สกินมาจากโปรไฟล์ของแต่ละคนอยู่แล้ว)
+   569→  function changeType(next: string) {
+   570→    setType(next);
+   571→  }
+   572→
+   573→  function saveMatch() {
+   574→    const courtVal = court.trim() || '-';
+   575→    const isDoubles = type === 'คู่';
+   576→    const slots: PlayerSlot[] = isDoubles ? [slotA1, slotA2, slotB1, slotB2] : [slotA1, slotB1];
+   577→    const sA = parseInt(scoreA);
+   578→    const sB = parseInt(scoreB);
+   579→
+   580→    if (players.length === 0)
+   581→      return showAlert('ยังไม่มีผู้เล่น — กด "＋ ลงทะเบียนผู้เล่นใหม่" ที่ช่องชื่อก่อน');
+   582→    // ทุกช่องต้องเลือกผู้เล่นที่ลงทะเบียนไว้
+   583→    if (slots.some((s) => !s.name)) return showAlert('กรุณาเลือกผู้เล่นให้ครบทุกช่อง');
+   584→    const names = slots.map((s) => s.name);
+   585→    if (new Set(names).size !== names.length)
+   586→      return showAlert('ผู้เล่นต้องไม่ซ้ำกันในแมตช์เดียวกัน');
+   587→    const profs: PlayerProfile[] = [];
+   588→    for (const n of names) {
+   589→      const p = players.find((x) => x.name === n);
+   590→      if (!p) return showAlert('ไม่พบโปรไฟล์ผู้เล่น กรุณาลงทะเบียนใหม่');
+   591→      profs.push(p);
+   592→    }
+   593→    const skinIds = profs.map((p) => p.skinId);
+   594→    if (new Set(skinIds).size !== skinIds.length)
+   595→      return showAlert('สกินตัวละครแต่ละคนต้องไม่ซ้ำกันในแมตช์เดียวกัน');
+   596→    if (isNaN(sA) || isNaN(sB) || sA < 0 || sB < 0) return showAlert('กรุณากรอกคะแนนให้ถูกต้อง');
+   597→    if (sA === sB) return showAlert('แบดมินตันไม่มีผลเสมอ กรุณาตรวจสอบคะแนน');
+   598→
+   599→    const playersA: PlayerInfo[] = isDoubles
+   600→      ? [
+   601→          { name: profs[0].name, skinId: profs[0].skinId, racketId: profs[0].racketId, shoeId: profs[0].shoeId },
+   602→          { name: profs[1].name, skinId: profs[1].skinId, racketId: profs[1].racketId, shoeId: profs[1].shoeId },
+   603→        ]
+   604→      : [{ name: profs[0].name, skinId: profs[0].skinId, racketId: profs[0].racketId, shoeId: profs[0].shoeId }];
+   605→    const playersB: PlayerInfo[] = isDoubles
+   606→      ? [
+   607→          { name: profs[2].name, skinId: profs[2].skinId, racketId: profs[2].racketId, shoeId: profs[2].shoeId },
+   608→          { name: profs[3].name, skinId: profs[3].skinId, racketId: profs[3].racketId, shoeId: profs[3].shoeId },
+   609→        ]
+   610→      : [{ name: profs[1].name, skinId: profs[1].skinId, racketId: profs[1].racketId, shoeId: profs[1].shoeId }];
+   611→
+   612→    // ชื่อทีม: เดี่ยว = ชื่อผู้เล่น, คู่ = "ชื่อ1 / ชื่อ2"
+   613→    const teamAVal = isDoubles ? `${names[0]} / ${names[1]}` : names[0];
+   614→    const teamBVal = isDoubles ? `${names[2]} / ${names[3]}` : names[1];
+   615→
+   616→    const matchData: Match = {
+   617→      id: matches.length + 1,
+   618→      court: courtVal,
+   619→      type,
+   620→      teamA: teamAVal,
+   621→      teamB: teamBVal,
+   622→      playersA,
+   623→      playersB,
+   624→      scoreA: sA,
+   625→      scoreB: sB,
+   626→      maxScore,
+   627→      date: matchDate || todayISO(),
+   628→    };
+   629→
+   630→    const newMatches = [...matches, matchData];
+   631→    setMatches(newMatches);
+   632→
+   633→    const newStats = { ...teamStats };
+   634→    if (!newStats[teamAVal]) newStats[teamAVal] = { name: teamAVal, played: 0, win: 0, lose: 0 };
+   635→    if (!newStats[teamBVal]) newStats[teamBVal] = { name: teamBVal, played: 0, win: 0, lose: 0 };
+   636→    newStats[teamAVal] = { ...newStats[teamAVal], played: newStats[teamAVal].played + 1 };
+   637→    newStats[teamBVal] = { ...newStats[teamBVal], played: newStats[teamBVal].played + 1 };
+   638→    if (sA > sB) {
+   639→      newStats[teamAVal] = { ...newStats[teamAVal], win: newStats[teamAVal].win + 1 };
+   640→      newStats[teamBVal] = { ...newStats[teamBVal], lose: newStats[teamBVal].lose + 1 };
+   641→    } else {
+   642→      newStats[teamBVal] = { ...newStats[teamBVal], win: newStats[teamBVal].win + 1 };
+   643→      newStats[teamAVal] = { ...newStats[teamAVal], lose: newStats[teamAVal].lose + 1 };
+   644→    }
+   645→    setTeamStats(newStats);
+   646→
+   647→    // บันทึกลงเบราว์เซอร์
+   648→    saveDataToLocal(newMatches, newStats);
+   649→
+   650→    setScoreA('');
+   651→    setScoreB('');
+   652→    setMatchDate(todayISO()); // รีเซ็ตกลับเป็นวันนี้สำหรับแมตช์ถัดไป
+   653→
+   654→    // เหรียญรายบุคคล: ผู้เล่นทีมชนะ +3 เหรียญ/คน ทีมแพ้ +1 เหรียญ/คน
+   655→    const split = isDoubles ? 2 : 1;
+   656→    const winnerNames = sA > sB ? names.slice(0, split) : names.slice(split);
+   657→    const loserNames = sA > sB ? names.slice(split) : names.slice(0, split);
+   658→    setPlayers((ps) => awardCoins(ps, winnerNames, loserNames, 3, 1).players);
+   659→    showAlert(
+   660→      `บันทึกผลสำเร็จ! ชนะ: ${winnerNames.join(', ')} +3 เหรียญ • แพ้: ${loserNames.join(', ')} +1 เหรียญ`,
+   661→      false
+   662→    );
+   663→  }
+   664→
+   665→  async function downloadAsImage() {
+   666→    const content = exportableRef.current;
+   667→    if (!content) return;
+   668→    const originalOverflow = content.style.overflow;
+   669→    const originalMaxHeight = content.style.maxHeight;
+   670→
+   671→    content.style.overflow = 'visible';
+   672→    content.style.maxHeight = 'none';
+   673→
+   674→    try {
+   675→      // ใช้ html2canvas-pro เพราะรองรับสี oklch/lab ของ Tailwind v4 (html2canvas ตัวเดิม parse ไม่ได้)
+   676→      const html2canvas = (await import('html2canvas-pro')).default;
+   677→      const canvas = await html2canvas(content, {
+   678→        backgroundColor: document.documentElement.classList.contains('dark') ? '#111827' : '#ffffff',
+   679→        scale: 2,
+   680→      });
+   681→      const link = document.createElement('a');
+   682→      link.download = 'badminton_summary.png';
+   683→      link.href = canvas.toDataURL('image/png');
+   684→      link.click();
+   685→    } finally {
+   686→      content.style.overflow = originalOverflow;
+   687→      content.style.maxHeight = originalMaxHeight;
+   688→    }
+   689→  }
+   690→
+   691→  // อันดับ (เรียงตาม Win Rate)
+   692→  const rankedTeams: RankedTeam[] = Object.values(teamStats)
+   693→    .map((t) => ({ ...t, winRate: (t.win / t.played) * 100 }))
+   694→    .sort((a, b) => b.winRate - a.winRate || b.win - a.win);
+   695→
+   696→  const summaryTeams: RankedTeam[] = Object.values(teamStats)
+   697→    .map((t) => ({ ...t, winRate: (t.win / t.played) * 100 }))
+   698→    .sort((a, b) => b.winRate - a.winRate);
+   699→
+   700→  // โปรไฟล์ + ตัวละครและอุปกรณ์ของทุกสล็อต (ดึงจากโปรไฟล์ผู้เล่นที่เลือก)
+   701→  const profA1 = profileOf(slotA1);
+   702→  const profA2 = profileOf(slotA2);
+   703→  const profB1 = profileOf(slotB1);
+   704→  const profB2 = profileOf(slotB2);
+   705→  const skinA1 = profA1 ? getSkin(profA1.skinId) : undefined;
+   706→  const skinA2 = profA2 ? getSkin(profA2.skinId) : undefined;
+   707→  const skinB1 = profB1 ? getSkin(profB1.skinId) : undefined;
+   708→  const skinB2 = profB2 ? getSkin(profB2.skinId) : undefined;
+   709→  const racketA1 = profA1 ? getGear(profA1.racketId) : undefined;
+   710→  const shoeA1 = profA1 ? getGear(profA1.shoeId) : undefined;
+   711→  const racketA2 = profA2 ? getGear(profA2.racketId) : undefined;
+   712→  const shoeA2 = profA2 ? getGear(profA2.shoeId) : undefined;
+   713→  const racketB1 = profB1 ? getGear(profB1.racketId) : undefined;
+   714→  const shoeB1 = profB1 ? getGear(profB1.shoeId) : undefined;
+   715→  const racketB2 = profB2 ? getGear(profB2.racketId) : undefined;
+   716→  const shoeB2 = profB2 ? getGear(profB2.shoeId) : undefined;
+   717→  const isDoublesType = type === 'คู่';
+   718→
+   719→  // สกินที่ถูกผู้เล่นอื่นในแมตช์นี้ใช้อยู่ (สำหรับล็อกในโมดอลเลือกสกิน)
+   720→  const skinIdBySlot: Record<PickerSlot, string> = {
+   721→    A1: profA1?.skinId ?? '',
+   722→    A2: profA2?.skinId ?? '',
+   723→    B1: profB1?.skinId ?? '',
+   724→    B2: profB2?.skinId ?? '',
+   725→  };
+   726→  const gearIdBySlot: Record<PickerSlot, { racketId: string; shoeId: string }> = {
+   727→    A1: { racketId: profA1?.racketId ?? 'r1', shoeId: profA1?.shoeId ?? 's1' },
+   728→    A2: { racketId: profA2?.racketId ?? 'r1', shoeId: profA2?.shoeId ?? 's1' },
+   729→    B1: { racketId: profB1?.racketId ?? 'r1', shoeId: profB1?.shoeId ?? 's1' },
+   730→    B2: { racketId: profB2?.racketId ?? 'r1', shoeId: profB2?.shoeId ?? 's1' },
+   731→  };
+   732→  const activeSlots: PickerSlot[] = isDoublesType ? ['A1', 'A2', 'B1', 'B2'] : ['A1', 'B1'];
+   733→  const pickerExcludeIds = activeSlots
+   734→    .filter((k) => k !== pickerSlot)
+   735→    .map((k) => skinIdBySlot[k]);
+   736→
+   737→  // แผนที่: ชื่อทีม → รายชื่อผู้เล่น (ใช้แสดงอวตารในอันดับ/สรุป, แมตช์ล่าสุดมีน้ำหนักสุดท้าย)
+   738→  const teamPlayersMap: Record<string, PlayerInfo[]> = {};
+   739→  for (const m of matches) {
+   740→    if (m.playersA?.length) teamPlayersMap[m.teamA] = m.playersA;
+   741→    if (m.playersB?.length) teamPlayersMap[m.teamB] = m.playersB;
+   742→  }
+   743→
+   744→  const inputBase =
+   745→    'w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-800 outline-none transition focus:bg-white focus:ring-2 focus:ring-blue-500/60 focus:border-blue-400 dark:bg-gray-800/70 dark:border-gray-700 dark:text-gray-100 dark:focus:bg-gray-800/70';
+   746→
+   747→  const isDark = mounted && resolvedTheme === 'dark';
+   748→
+   749→  return (
+   750→    <div
+   751→      className="min-h-screen bg-gradient-to-br from-slate-100 via-gray-50 to-blue-50 text-gray-800 dark:from-slate-950 dark:via-gray-950 dark:to-blue-950 dark:text-gray-100"
+   752→      style={{ fontFamily: "'Noto Sans Thai', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif" }}
+   753→    >
+   754→      {/* ===== Navbar ===== */}
+   755→      <nav className="sticky top-0 z-40 bg-gradient-to-r from-blue-800 via-blue-600 to-sky-500 text-white shadow-lg shadow-blue-900/20">
+   756→        <div className="max-w-7xl mx-auto px-4 py-3 flex flex-wrap justify-between items-center gap-2 sm:gap-3">
+   757→          <div className="flex items-center gap-3 min-w-0 w-full sm:w-auto justify-center sm:justify-start">
+   758→            <span
+   759→              className="w-10 h-10 rounded-xl bg-white/15 ring-1 ring-white/30 flex items-center justify-center text-xl shrink-0 shadow-inner"
+   760→              role="img"
+   761→              aria-label="แบดมินตัน"
+   762→            >
+   763→              🏸
+   764→            </span>
+   765→            <div className="min-w-0">
+   766→              <h1 className="text-lg sm:text-xl font-extrabold tracking-tight truncate leading-tight">
+   767→                บันทึกสถิติแบดมินตัน
+   768→              </h1>
+   769→              <p className="hidden sm:block text-[11px] sm:text-xs text-blue-100/90 font-medium leading-tight">
+   770→                ระบบเก็บสถิติการแข่งขัน • Badminton Stats
+   771→              </p>
+   772→            </div>
+   773→          </div>
+   774→          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 mx-auto sm:mx-0">
+   775→            {/* ลงทะเบียน/จัดการผู้เล่น — เหรียญและสกินเป็นของรายบุคคล */}
+   776→            <button
+   777→              onClick={() => {
+   778→                setRegisterOpen(true);
+   779→                setRegisterBackTo(null);
+   780→                playSound('open');
+   781→              }}
+   782→              aria-label="ลงทะเบียนผู้เล่น"
+   783→              title="ลงทะเบียนผู้เล่น (ชื่อ + รหัส PIN 6 หลัก) — เหรียญและสกินเป็นของรายบุคคล"
+   784→              className="bg-amber-400/25 hover:bg-amber-400/40 border border-amber-300/40 text-white px-3 py-2 rounded-xl font-semibold transition text-sm flex items-center gap-1.5"
+   785→            >
+   786→              <i className="fa-solid fa-user-group"></i>
+   787→              <span className="hidden sm:inline">ผู้เล่น</span>
+   788→              <span className="bg-white/20 rounded-md px-1.5 text-xs font-extrabold">
+   789→                {mounted ? players.length : '–'}
+   790→              </span>
+   791→            </button>
+   792→            {/* ปุ่มเปิด/ปิดเสียง */}
+   793→            <button
+   794→              onClick={toggleSound}
+   795→              aria-label={soundMuted ? 'เปิดเสียงเอฟเฟกต์' : 'ปิดเสียงเอฟเฟกต์'}
+   796→              title={soundMuted ? 'เปิดเสียงเอฟเฟกต์' : 'ปิดเสียงเอฟเฟกต์'}
+   797→              className="bg-white/10 hover:bg-white/20 border border-white/25 text-white w-9 h-9 rounded-xl transition flex items-center justify-center text-sm"
+   798→            >
+   799→              <i className={`fa-solid ${soundMuted ? 'fa-volume-xmark' : 'fa-volume-high'}`}></i>
+   800→            </button>
+   801→            {/* ปุ่มสลับธีม light/dark */}
+   802→            <button
+   803→              onClick={toggleTheme}
+   804→              aria-label={isDark ? 'สลับเป็นโหมดสว่าง' : 'สลับเป็นโหมดมืด'}
+   805→              title={isDark ? 'โหมดสว่าง' : 'โหมดมืด'}
+   806→              className="bg-white/10 hover:bg-white/20 border border-white/25 text-white w-9 h-9 rounded-xl transition flex items-center justify-center text-sm"
+   807→            >
+   808→              <i className={`fa-solid ${isDark ? 'fa-sun' : 'fa-moon'}`}></i>
+   809→            </button>
+   810→            <button
+   811→              onClick={requestClearData}
+   812→              aria-label="ล้างข้อมูล (ต้องใส่รหัส PIN ผู้ดูแลระบบ)"
+   813→              title="ล้างข้อมูล (ต้องใส่รหัส PIN)"
+   814→              className="bg-white/10 hover:bg-rose-500 border border-white/25 text-white px-3 py-2 rounded-xl font-semibold transition text-sm flex items-center gap-1.5"
+   815→            >
+   816→              <i className="fa-solid fa-trash-can"></i>
+   817→              <span className="hidden sm:inline">ล้างข้อมูล</span>
+   818→            </button>
+   819→            <button
+   820→              onClick={() => {
+   821→                setModalOpen(true);
+   822→                playSound('open');
+   823→              }}
+   824→              className="bg-white text-blue-700 hover:bg-blue-50 px-3 py-2 rounded-xl font-bold transition text-sm shadow-md flex items-center gap-1.5"
+   825→            >
+   826→              <i className="fa-solid fa-chart-pie"></i>
+   827→              <span className="hidden sm:inline">สรุปภาพรวม</span>
+   828→            </button>
+   829→          </div>
+   830→        </div>
+   831→      </nav>
+   832→
+   833→      <main className="max-w-7xl mx-auto px-4 py-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+   834→        {/* ===== ฝั่งซ้าย: ฟอร์มกรอกข้อมูล ===== */}
+   835→        <section className="lg:col-span-2 bg-white rounded-2xl shadow-sm ring-1 ring-gray-200/70 p-5 sm:p-6 dark:bg-gray-900 dark:ring-gray-700/60">
+   836→          <div className="flex items-center gap-3 mb-5">
+   837→            <span className="w-9 h-9 rounded-xl bg-blue-100 text-blue-600 dark:bg-blue-950 dark:text-blue-400 flex items-center justify-center shrink-0">
+   838→              <i className="fa-solid fa-pen-to-square text-sm"></i>
+   839→            </span>
+   840→            <div>
+   841→              <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100 leading-tight">
+   842→                บันทึกผลการแข่งขัน
+   843→              </h2>
+   844→              <p className="text-xs text-gray-400">
+   845→                เลือกชื่อผู้เล่นที่ลงทะเบียนไว้ (สกินตามโปรไฟล์) • กดช่องตัวละครเปิดตู้ Reel — ยืนยัน PIN 6 หลักของเจ้าของก่อน
+   846→              </p>
+   847→            </div>
+   848→          </div>
+   849→
+   850→          {/* ข้อมูลแมตช์ */}
+   851→          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
+   852→            <div>
+   853→              <label htmlFor="court" className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1.5">
+   854→                <i className="fa-solid fa-location-dot text-gray-400 mr-1"></i>ชื่อสนาม
+   855→              </label>
+   856→              <input
+   857→                type="text"
+   858→                id="court"
+   859→                value={court}
+   860→                onChange={(e) => setCourt(e.target.value)}
+   861→                className={inputBase}
+   862→                placeholder="เช่น คอร์ท 1"
+   863→              />
+   864→            </div>
+   865→            <div>
+   866→              <label htmlFor="type" className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1.5">
+   867→                <i className="fa-solid fa-user-group text-gray-400 mr-1"></i>ประเภทการตี
+   868→              </label>
+   869→              <select
+   870→                id="type"
+   871→                value={type}
+   872→                onChange={(e) => changeType(e.target.value)}
+   873→                className={`${inputBase} cursor-pointer`}
+   874→              >
+   875→                <option value="เดี่ยว">เดี่ยว (Singles)</option>
+   876→                <option value="คู่">คู่ (Doubles)</option>
+   877→              </select>
+   878→            </div>
+   879→            <div>
+   880→              <label htmlFor="matchDate" className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1.5">
+   881→                <i className="fa-regular fa-calendar-days text-gray-400 mr-1"></i>วัน/เดือน/ปี
+   882→              </label>
+   883→              <input
+   884→                type="date"
+   885→                id="matchDate"
+   886→                value={matchDate}
+   887→                onChange={(e) => setMatchDate(e.target.value)}
+   888→                className={`${inputBase} cursor-pointer`}
+   889→              />
+   890→            </div>
+   891→          </div>
+   892→
+   893→          {/* คะแนนสองทีม */}
+   894→          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+   895→            <div className="bg-blue-50/60 ring-1 ring-blue-100 rounded-2xl p-4 dark:bg-blue-950/40 dark:ring-blue-900/60">
+   896→              <div className="flex items-center justify-center gap-2 mb-3">
+   897→                <span className="w-6 h-6 rounded-full bg-blue-600 text-white text-xs font-extrabold flex items-center justify-center shadow">
+   898→                  A
+   899→                </span>
+   900→                <h3 className="font-bold text-blue-800 dark:text-blue-300">ทีม A</h3>
+   901→                {isDoublesType && (
+   902→                  <span className="text-[10px] font-bold bg-blue-600/10 text-blue-600 dark:text-blue-300 rounded-full px-2 py-0.5">
+   903→                    เล่นคู่
+   904→                  </span>
+   905→                )}
+   906→              </div>
+   907→              <div className="space-y-3">
+   908→                <PlayerSlotField
+   909→                  id="playerA1"
+   910→                  label="ผู้เล่น 1"
+   911→                  slot={slotA1}
+   912→                  profile={profA1}
+   913→                  players={players}
+   914→                  takenNames={activeSlots.filter((k) => k !== 'A1').map((k) => slotStateMap[k].name)}
+   915→                  accent="blue"
+   916→                  onSelectName={(v) => setSlotA1({ name: v })}
+   917→                  onOpenPicker={() => openSlotPicker('A1')}
+   918→                  onOpenReel={() => openSlotReel('A1')}
+   919→                  onOpenRegister={() => openRegisterFor('A1')}
+   920→                />
+   921→                {isDoublesType && (
+   922→                  <PlayerSlotField
+   923→                    id="playerA2"
+   924→                    label="ผู้เล่น 2"
+   925→                    slot={slotA2}
+   926→                    profile={profA2}
+   927→                    players={players}
+   928→                    takenNames={activeSlots.filter((k) => k !== 'A2').map((k) => slotStateMap[k].name)}
+   929→                    accent="blue"
+   930→                    onSelectName={(v) => setSlotA2({ name: v })}
+   931→                    onOpenPicker={() => openSlotPicker('A2')}
+   932→                    onOpenReel={() => openSlotReel('A2')}
+   933→                    onOpenRegister={() => openRegisterFor('A2')}
+   934→                  />
+   935→                )}
+   936→              </div>
+   937→              <label htmlFor="scoreA" className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1 mt-3">
+   938→                แต้มที่ได้
+   939→              </label>
+   940→              <input
+   941→                type="number"
+   942→                id="scoreA"
+   943→                min={0}
+   944→                value={scoreA}
+   945→                onChange={(e) => setScoreA(e.target.value)}
+   946→                className="w-full bg-white border border-blue-200 rounded-xl px-3 py-2 text-center text-2xl font-extrabold text-blue-700 outline-none transition focus:ring-2 focus:ring-blue-400 dark:bg-blue-950/50 dark:border-blue-800 dark:text-blue-300"
+   947→                placeholder="0"
+   948→              />
+   949→            </div>
+   950→
+   951→            <div className="bg-rose-50/60 ring-1 ring-rose-100 rounded-2xl p-4 dark:bg-rose-950/30 dark:ring-rose-900/60">
+   952→              <div className="flex items-center justify-center gap-2 mb-3">
+   953→                <span className="w-6 h-6 rounded-full bg-rose-600 text-white text-xs font-extrabold flex items-center justify-center shadow">
+   954→                  B
+   955→                </span>
+   956→                <h3 className="font-bold text-rose-800 dark:text-rose-300">ทีม B</h3>
+   957→                {isDoublesType && (
+   958→                  <span className="text-[10px] font-bold bg-rose-600/10 text-rose-600 dark:text-rose-300 rounded-full px-2 py-0.5">
+   959→                    เล่นคู่
+   960→                  </span>
+   961→                )}
+   962→              </div>
+   963→              <div className="space-y-3">
+   964→                <PlayerSlotField
+   965→                  id="playerB1"
+   966→                  label="ผู้เล่น 1"
+   967→                  slot={slotB1}
+   968→                  profile={profB1}
+   969→                  players={players}
+   970→                  takenNames={activeSlots.filter((k) => k !== 'B1').map((k) => slotStateMap[k].name)}
+   971→                  accent="rose"
+   972→                  onSelectName={(v) => setSlotB1({ name: v })}
+   973→                  onOpenPicker={() => openSlotPicker('B1')}
+   974→                  onOpenReel={() => openSlotReel('B1')}
+   975→                  onOpenRegister={() => openRegisterFor('B1')}
+   976→                />
+   977→                {isDoublesType && (
+   978→                  <PlayerSlotField
+   979→                    id="playerB2"
+   980→                    label="ผู้เล่น 2"
+   981→                    slot={slotB2}
+   982→                    profile={profB2}
+   983→                    players={players}
+   984→                    takenNames={activeSlots.filter((k) => k !== 'B2').map((k) => slotStateMap[k].name)}
+   985→                    accent="rose"
+   986→                    onSelectName={(v) => setSlotB2({ name: v })}
+   987→                    onOpenPicker={() => openSlotPicker('B2')}
+   988→                    onOpenReel={() => openSlotReel('B2')}
+   989→                    onOpenRegister={() => openRegisterFor('B2')}
+   990→                  />
+   991→                )}
+   992→              </div>
+   993→              <label htmlFor="scoreB" className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1 mt-3">
+   994→                แต้มที่ได้
+   995→              </label>
+   996→              <input
+   997→                type="number"
+   998→                id="scoreB"
+   999→                min={0}
+  1000→                value={scoreB}
+  1001→                onChange={(e) => setScoreB(e.target.value)}
+  1002→                className="w-full bg-white border border-rose-200 rounded-xl px-3 py-2 text-center text-2xl font-extrabold text-rose-700 outline-none transition focus:ring-2 focus:ring-rose-400 dark:bg-rose-950/40 dark:border-rose-900 dark:text-rose-300"
+  1003→                placeholder="0"
+  1004→              />
+  1005→            </div>
+  1006→          </div>
+  1007→
+  1008→          {/* ปุ่มบันทึก */}
+  1009→          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-4 border-t border-gray-100 dark:border-gray-800">
+  1010→            <div className="flex items-center gap-2 text-sm">
+  1011→              <label htmlFor="maxScore" className="font-medium text-gray-500 dark:text-gray-400">
+  1012→                <i className="fa-solid fa-flag text-gray-400 mr-1.5"></i>เกมละกี่แต้ม:
+  1013→              </label>
+  1014→              <select
+  1015→                id="maxScore"
+  1016→                value={maxScore}
+  1017→                onChange={(e) => setMaxScore(e.target.value)}
+  1018→                className="border border-gray-200 bg-gray-50 rounded-lg px-2.5 py-1.5 text-sm font-semibold text-gray-800 outline-none cursor-pointer transition focus:ring-2 focus:ring-blue-400 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100"
+  1019→              >
+  1020→                <option value="21">21 แต้ม</option>
+  1021→                <option value="15">15 แต้ม</option>
+  1022→              </select>
+  1023→            </div>
+  1024→            <button
+  1025→              onClick={saveMatch}
+  1026→              className="w-full sm:w-auto bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white px-7 py-2.5 rounded-xl font-bold shadow-lg shadow-green-500/25 transition flex items-center justify-center gap-2 active:scale-[0.98]"
+  1027→            >
+  1028→              <i className="fa-solid fa-floppy-disk"></i> บันทึกผล
+  1029→            </button>
+  1030→          </div>
+  1031→
+  1032→          {alertMsg && (
+  1033→            <div
+  1034→              role="alert"
+  1035→              className={`mt-4 p-3 rounded-xl text-sm text-center font-semibold flex items-center justify-center gap-2 ${
+  1036→                alertMsg.isError
+  1037→                  ? 'bg-rose-50 text-rose-600 ring-1 ring-rose-200 dark:bg-rose-950/60 dark:text-rose-300 dark:ring-rose-900'
+  1038→                  : 'bg-emerald-50 text-emerald-600 ring-1 ring-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:ring-emerald-900'
+  1039→              }`}
+  1040→            >
+  1041→              <i className={`fa-solid ${alertMsg.isError ? 'fa-circle-exclamation' : 'fa-circle-check'}`}></i>
+  1042→              {alertMsg.msg}
+  1043→            </div>
+  1044→          )}
+  1045→        </section>
+  1046→
+  1047→        {/* ===== ฝั่งขวา: ตารางอันดับ ===== */}
+  1048→        <aside className="bg-white rounded-2xl shadow-sm ring-1 ring-gray-200/70 p-5 sm:p-6 flex flex-col dark:bg-gray-900 dark:ring-gray-700/60">
+  1049→          <div className="flex items-center gap-3 mb-5">
+  1050→            <span className="w-9 h-9 rounded-xl bg-amber-100 text-amber-500 dark:bg-amber-950 dark:text-amber-400 flex items-center justify-center shrink-0">
+  1051→              <i className="fa-solid fa-trophy text-sm"></i>
+  1052→            </span>
+  1053→            <div>
+  1054→              <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100 leading-tight">ตารางอันดับ</h2>
+  1055→              <p className="text-xs text-gray-400">จัดอันดับตาม Win Rate แบบเรียลไทม์</p>
+  1056→            </div>
+  1057→          </div>
+  1058→
+  1059→          {rankedTeams.length === 0 ? (
+  1060→            <div className="flex-1 flex flex-col items-center justify-center text-center py-12 border-2 border-dashed border-gray-200 rounded-2xl dark:border-gray-700">
+  1061→              <span className="text-4xl mb-3" role="img" aria-label="แบดมินตัน">
+  1062→                🏸
+  1063→              </span>
+  1064→              <p className="text-gray-400 text-sm font-semibold">ยังไม่มีข้อมูล</p>
+  1065→              <p className="text-gray-300 dark:text-gray-600 text-xs mt-1">เริ่มบันทึกผลการแข่งขันเลย!</p>
+  1066→            </div>
+  1067→          ) : (
+  1068→            <ol className="space-y-2.5">
+  1069→              {rankedTeams.map((team, index) => (
+  1070→                <li
+  1071→                  key={team.name}
+  1072→                  className="flex items-center gap-3 p-3 rounded-xl ring-1 ring-gray-100 hover:ring-blue-200 hover:bg-blue-50/40 transition dark:ring-gray-800 dark:hover:ring-blue-800 dark:hover:bg-blue-950/40"
+  1073→                >
+  1074→                  <span
+  1075→                    className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-extrabold shrink-0 shadow ${rankBadgeClass(index)}`}
+  1076→                  >
+  1077→                    {index < 3 ? <i className="fa-solid fa-medal"></i> : index + 1}
+  1078→                  </span>
+  1079→                  <TeamPlayersAvatar players={teamPlayersMap[team.name]} name={team.name} size={26} />
+  1080→                  <div className="flex-1 min-w-0">
+  1081→                    <div className="flex items-center justify-between gap-2">
+  1082→                      <p className="font-bold text-gray-800 dark:text-gray-100 text-sm truncate">{team.name}</p>
+  1083→                      <span className="text-sm font-extrabold text-blue-600 dark:text-blue-400 shrink-0">
+  1084→                        {team.winRate.toFixed(1)}%
+  1085→                      </span>
+  1086→                    </div>
+  1087→                    <div className="flex items-center justify-between text-xs text-gray-400 mt-0.5">
+  1088→                      <span>แข่ง {team.played} แมตช์</span>
+  1089→                      <span>
+  1090→                        <span className="text-emerald-600 dark:text-emerald-400 font-bold">{team.win}W</span>
+  1091→                        {' - '}
+  1092→                        <span className="text-rose-500 dark:text-rose-400 font-bold">{team.lose}L</span>
+  1093→                      </span>
+  1094→                    </div>
+  1095→                    <div className="h-1.5 bg-gray-100 rounded-full mt-2 overflow-hidden dark:bg-gray-800">
+  1096→                      <div
+  1097→                        className="h-full bg-gradient-to-r from-blue-600 to-sky-400 rounded-full transition-all"
+  1098→                        style={{ width: `${team.winRate}%` }}
+  1099→                      ></div>
+  1100→                    </div>
+  1101→                  </div>
+  1102→                </li>
+  1103→              ))}
+  1104→            </ol>
+  1105→          )}
+  1106→        </aside>
+  1107→      </main>
+  1108→
+  1109→      {/* ===== Modal สรุปภาพรวม ===== */}
+  1110→      <div
+  1111→        id="summaryModal"
+  1112→        className={`fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-50 justify-center items-center p-4 ${
+  1113→          modalOpen ? 'flex' : 'hidden'
+  1114→        }`}
+  1115→      >
+  1116→        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden dark:bg-gray-900">
+  1117→          {/* หัวโมดอล */}
+  1118→          <div className="flex justify-between items-center px-5 py-4 border-b border-gray-100 bg-gradient-to-r from-blue-50 via-white to-white dark:border-gray-800 dark:from-gray-800 dark:via-gray-900 dark:to-gray-900">
+  1119→            <div className="flex items-center gap-3 min-w-0">
+  1120→              <span className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-sky-500 text-white flex items-center justify-center shadow-lg shadow-blue-600/25 shrink-0">
+  1121→                <i className="fa-solid fa-chart-pie"></i>
+  1122→              </span>
+  1123→              <div className="min-w-0">
+  1124→                <h2 className="text-xl font-extrabold text-gray-800 dark:text-gray-100 leading-tight truncate">
+  1125→                  สรุปภาพรวมทั้งหมด
+  1126→                </h2>
+  1127→                <p className="text-xs text-gray-400">สถิติทุกทีมและประวัติการแข่งขัน</p>
+  1128→              </div>
+  1129→            </div>
+  1130→            <div className="flex items-center gap-2 shrink-0">
+  1131→              <button
+  1132→                onClick={downloadAsImage}
+  1133→                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl font-semibold text-sm transition shadow-md shadow-blue-600/20"
+  1134→              >
+  1135→                <i className="fa-solid fa-camera mr-1.5"></i>เซฟเป็นรูป
+  1136→              </button>
+  1137→              <button
+  1138→                onClick={() => setModalOpen(false)}
+  1139→                aria-label="ปิดหน้าต่าง"
+  1140→                className="w-9 h-9 rounded-xl text-gray-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/60 transition flex items-center justify-center"
+  1141→              >
+  1142→                <i className="fa-solid fa-xmark text-lg"></i>
+  1143→              </button>
+  1144→            </div>
+  1145→          </div>
+  1146→
+  1147→          {/* เนื้อหาในโมดอล */}
+  1148→          <div
+  1149→            id="exportableArea"
+  1150→            ref={exportableRef}
+  1151→            className="overflow-y-auto p-5 space-y-8 flex-grow bg-white dark:bg-gray-900"
+  1152→          >
+  1153→            {/* สถิติแต่ละทีม */}
+  1154→            <section>
+  1155→              <h3 className="text-base font-bold text-gray-700 dark:text-gray-200 mb-3 flex items-center gap-2">
+  1156→                <i className="fa-solid fa-users text-blue-500"></i>สถิติแต่ละทีม
+  1157→                <span className="text-xs font-medium text-gray-400 dark:text-gray-500">• วงกลม Win Rate</span>
+  1158→              </h3>
+  1159→              <div id="teamStatsCards" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+  1160→                {summaryTeams.length === 0 ? (
+  1161→                  <div className="col-span-full text-center py-10 text-gray-400 border-2 border-dashed border-gray-200 rounded-2xl dark:border-gray-700">
+  1162→                    <i className="fa-solid fa-chart-simple text-2xl mb-2 block"></i>
+  1163→                    ยังไม่มีข้อมูลสถิติ
+  1164→                  </div>
+  1165→                ) : (
+  1166→                  summaryTeams.map((team) => (
+  1167→                      <div
+  1168→                        key={team.name}
+  1169→                        className="relative bg-white ring-1 ring-gray-200 rounded-2xl p-4 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition overflow-hidden dark:bg-gray-800 dark:ring-gray-700"
+  1170→                      >
+  1171→                        {/* อินโฟกราฟิก: วงกลม Win Rate */}
+  1172→                        <div className="flex items-center gap-3 mb-3">
+  1173→                          <span className="w-11 h-11 rounded-xl bg-gradient-to-b from-slate-100 to-slate-200 dark:from-gray-700 dark:to-gray-800 flex items-center justify-center shrink-0">
+  1174→                            <TeamPlayersAvatar players={teamPlayersMap[team.name]} name={team.name} size={32} />
+  1175→                          </span>
+  1176→                          <div className="min-w-0">
+  1177→                            <h4 className="font-extrabold text-gray-800 dark:text-gray-100 text-base leading-tight truncate">
+  1178→                              {team.name}
+  1179→                            </h4>
+  1180→                            <p className="text-xs text-gray-400 mt-0.5">แข่งทั้งหมด {team.played} แมตช์</p>
+  1181→                          </div>
+  1182→                        </div>
+  1183→                        <div className="flex items-center gap-4">
+  1184→                          <div className="shrink-0">
+  1185→                            <WinRateRing
+  1186→                              pct={team.winRate}
+  1187→                              size={92}
+  1188→                              track={isDark ? '#374151' : '#e5e7eb'}
+  1189→                              text={isDark ? '#e5e7eb' : '#334155'}
+  1190→                            />
+  1191→                          </div>
+  1192→                          <div className="flex-1 grid grid-cols-2 gap-2 text-center">
+  1193→                            <div className="bg-emerald-50 ring-1 ring-emerald-100 text-emerald-700 rounded-xl py-2 dark:bg-emerald-950/60 dark:ring-emerald-900 dark:text-emerald-300">
+  1194→                              <div className="text-[11px]">ชนะ</div>
+  1195→                              <div className="font-extrabold text-lg leading-tight">{team.win}</div>
+  1196→                            </div>
+  1197→                            <div className="bg-rose-50 ring-1 ring-rose-100 text-rose-600 rounded-xl py-2 dark:bg-rose-950/50 dark:ring-rose-900 dark:text-rose-300">
+  1198→                              <div className="text-[11px]">แพ้</div>
+  1199→                              <div className="font-extrabold text-lg leading-tight">{team.lose}</div>
+  1200→                            </div>
+  1201→                          </div>
+  1202→                        </div>
+  1203→                      </div>
+  1204→                  ))
+  1205→                )}
+  1206→              </div>
+  1207→            </section>
+  1208→
+  1209→            {/* ประวัติการแข่งขัน */}
+  1210→            <section>
+  1211→              <h3 className="text-base font-bold text-gray-700 dark:text-gray-200 mb-3 flex items-center gap-2">
+  1212→                <i className="fa-solid fa-clock-rotate-left text-blue-500"></i>ประวัติการแข่งขัน (Match
+  1213→                History)
+  1214→              </h3>
+  1215→              <div className="overflow-x-auto ring-1 ring-gray-200 rounded-2xl dark:ring-gray-700">
+  1216→                <table className="w-full text-sm text-left">
+  1217→                  <thead className="bg-gray-50 text-gray-500 text-xs font-semibold dark:bg-gray-800/80 dark:text-gray-400">
+  1218→                    <tr>
+  1219→                      <th className="p-3">แมตช์</th>
+  1220→                      <th className="p-3">วันที่</th>
+  1221→                      <th className="p-3">สนาม</th>
+  1222→                      <th className="p-3">ประเภท</th>
+  1223→                      <th className="p-3 text-right">ทีม A</th>
+  1224→                      <th className="p-3 text-center">คะแนน</th>
+  1225→                      <th className="p-3 text-left">ทีม B</th>
+  1226→                      <th className="p-3 text-center">แต้มจบ</th>
+  1227→                    </tr>
+  1228→                  </thead>
+  1229→                  <tbody id="historyBody" className="divide-y divide-gray-100 dark:divide-gray-800">
+  1230→                    {matches.length === 0 ? (
+  1231→                      <tr>
+  1232→                        <td colSpan={8} className="text-center py-10 text-gray-400">
+  1233→                          <i className="fa-regular fa-folder-open text-2xl mb-2 block"></i>
+  1234→                          ยังไม่มีประวัติการแข่งขัน
+  1235→                        </td>
+  1236→                      </tr>
+  1237→                    ) : (
+  1238→                      [...matches].reverse().map((m) => {
+  1239→                        const aClass =
+  1240→                          m.scoreA > m.scoreB
+  1241→                            ? 'font-bold text-emerald-600 dark:text-emerald-400'
+  1242→                            : 'text-gray-500 dark:text-gray-400';
+  1243→                        const bClass =
+  1244→                          m.scoreB > m.scoreA
+  1245→                            ? 'font-bold text-emerald-600 dark:text-emerald-400'
+  1246→                            : 'text-gray-500 dark:text-gray-400';
+  1247→
+  1248→                        return (
+  1249→                          <tr key={m.id} className="hover:bg-gray-50/70 dark:hover:bg-gray-800/60">
+  1250→                            <td className="p-3 text-center font-bold text-gray-400">#{m.id}</td>
+  1251→                            <td className="p-3 text-center">
+  1252→                              <span className="inline-flex items-center gap-1.5 bg-blue-50 text-blue-700 ring-1 ring-blue-100 px-2 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap dark:bg-blue-950/70 dark:text-blue-300 dark:ring-blue-900">
+  1253→                                <i className="fa-regular fa-calendar-days text-[10px]"></i>
+  1254→                                {formatThaiDate(m.date)}
+  1255→                              </span>
+  1256→                            </td>
+  1257→                            <td className="p-3 dark:text-gray-200">{m.court}</td>
+  1258→                            <td className="p-3">
+  1259→                              <span className="inline-flex items-center rounded-full bg-gray-100 text-gray-600 px-2 py-0.5 text-xs font-medium dark:bg-gray-800 dark:text-gray-300">
+  1260→                                {m.type}
+  1261→                              </span>
+  1262→                            </td>
+  1263→                            <td className={`p-3 text-right ${aClass}`}>
+  1264→                              <span className="inline-flex items-center justify-end gap-1.5">
+  1265→                                <TeamPlayersAvatar players={m.playersA} name={m.teamA} size={18} />
+  1266→                                {m.teamA}
+  1267→                              </span>
+  1268→                            </td>
+  1269→                            <td className="p-3 text-center font-extrabold tracking-widest text-gray-700 dark:text-gray-200">
+  1270→                              {m.scoreA} - {m.scoreB}
+  1271→                            </td>
+  1272→                            <td className={`p-3 text-left ${bClass}`}>
+  1273→                              <span className="inline-flex items-center justify-start gap-1.5">
+  1274→                                <TeamPlayersAvatar players={m.playersB} name={m.teamB} size={18} />
+  1275→                                {m.teamB}
+  1276→                              </span>
+  1277→                            </td>
+  1278→                            <td className="p-3 text-center text-xs text-gray-400">{m.maxScore} แต้ม</td>
+  1279→                          </tr>
+  1280→                        );
+  1281→                      })
+  1282→                    )}
+  1283→                  </tbody>
+  1284→                </table>
+  1285→              </div>
+  1286→            </section>
+  1287→          </div>
+  1288→
+  1289→          {/* ท้ายโมดอล */}
+  1290→          <div className="px-5 py-4 border-t border-gray-100 bg-gray-50 flex justify-end dark:border-gray-800 dark:bg-gray-800/60">
+  1291→            <button
+  1292→              onClick={() => setModalOpen(false)}
+  1293→              className="bg-gray-600 hover:bg-gray-700 text-white px-5 py-2 rounded-xl font-semibold shadow transition"
+  1294→            >
+  1295→              ปิดหน้าต่าง
+  1296→            </button>
+  1297→          </div>
+  1298→        </div>
+  1299→      </div>
+  1300→
+  1301→      {/* ===== Modal เลือกสกินตัวละคร 8-bit (30 สกิน) ===== */}
+  1302→      <CharacterPicker
+  1303→        key={`picker-${pickerSlot ?? 'closed'}`}
+  1304→        open={pickerSlot !== null}
+  1305→        slot={pickerSlot}
+  1306→        playerName={pickerSlot ? slotStateMap[pickerSlot].name : ''}
+  1307→        currentId={pickerSlot ? skinIdBySlot[pickerSlot] : ''}
+  1308→        excludeIds={pickerExcludeIds}
+  1309→        onPick={pickCharacter}
+  1310→        onClose={() => setPickerSlot(null)}
+  1311→      />
+  1312→
+  1313→      {/* ===== Modal ตู้ Reel เปลี่ยนสกินไม้แบด/รองเท้าแบด (ของผู้เล่นที่ล็อคอินแล้ว) ===== */}
+  1314→      <SkinReel
+  1315→        key={`reel-${reelSlot ?? 'closed'}`}
+  1316→        open={reelSlot !== null}
+  1317→        slotLabel={reelSlot ? `ทีม ${reelSlot[0]} • ผู้เล่น ${reelSlot[1]}` : ''}
+  1318→        playerName={reelSlot ? slotStateMap[reelSlot].name : ''}
+  1319→        skin={reelSlot ? getSkin(skinIdBySlot[reelSlot]) : undefined}
+  1320→        currentRacketId={reelSlot ? gearIdBySlot[reelSlot].racketId : 'r1'}
+  1321→        currentShoeId={reelSlot ? gearIdBySlot[reelSlot].shoeId : 's1'}
+  1322→        coins={reelSlot ? profileOf(slotStateMap[reelSlot])?.coins ?? 0 : 0}
+  1323→        unlockedIds={reelSlot ? profileOf(slotStateMap[reelSlot])?.owned ?? [] : []}
+  1324→        onPick={pickGear}
+  1325→        onLockedPick={lockedGearPick}
+  1326→        onOpenShop={() => {
+  1327→          if (!reelSlot) return;
+  1328→          const name = slotStateMap[reelSlot].name;
+  1329→          if (name) setShopFor(name);
+  1330→        }}
+  1331→        onChangePin={() => {
+  1332→          if (!reelSlot) return;
+  1333→          const name = slotStateMap[reelSlot].name;
+  1334→          if (name) setPinReq({ name, mode: 'set', intent: null, seq: Date.now() });
+  1335→        }}
+  1336→        onClose={() => setReelSlot(null)}
+  1337→        onTick={() => playSound('tick')}
+  1338→      />
+  1339→
+  1340→      {/* ===== Modal ลงทะเบียนผู้เล่น (ชื่อ + รหัส PIN 6 หลัก) ===== */}
+  1341→      <RegisterModal
+  1342→        key={registerOpen ? 'register-open' : 'register-closed'}
+  1343→        open={registerOpen}
+  1344→        players={players}
+  1345→        unlockedNames={unlockedNames}
+  1346→        onRegister={handleRegister}
+  1347→        onPlayerAction={rosterAction}
+  1348→        onClose={() => {
+  1349→          setRegisterOpen(false);
+  1350→          setRegisterBackTo(null);
+  1351→        }}
+  1352→      />
+  1353→
+  1354→      {/* ===== Modal ร้านค้าสกิน (ปลดล็อคด้วยเหรียญรายบุคคล) ===== */}
+  1355→      <ShopModal
+  1356→        key={`shop-${shopFor ?? 'closed'}`}
+  1357→        open={shopFor !== null}
+  1358→        playerName={shopFor ?? ''}
+  1359→        coins={shopFor ? players.find((p) => p.name === shopFor)?.coins ?? 0 : 0}
+  1360→        unlockedIds={shopFor ? players.find((p) => p.name === shopFor)?.owned ?? [] : []}
+  1361→        onBuy={buyGear}
+  1362→        onClose={() => setShopFor(null)}
+  1363→      />
+  1364→
+  1365→      {/* ===== Modal รหัส PIN 6 หลัก (ยืนยันตัวตน / ตั้งรหัสใหม่) ===== */}
+  1366→      <PinModal
+  1367→        key={`pin-${pinReq?.seq ?? 'closed'}`}
+  1368→        open={pinReq !== null}
+  1369→        playerName={pinReq?.name ?? ''}
+  1370→        mode={pinReq?.mode ?? 'verify'}
+  1371→        expectedPin={pinReq ? players.find((p) => p.name === pinReq.name)?.pin ?? '' : ''}
+  1372→        onSuccess={handlePinSuccess}
+  1373→        onClose={() => setPinReq(null)}
+  1374→        onError={(msg) => showAlert(msg)}
+  1375→        playSound={playSound}
+  1376→      />
+  1377→
+  1378→      {/* ===== Modal PIN ยืนยันก่อนล้างข้อมูล (รหัสผู้ดูแลระบบ 6 หลัก) ===== */}
+  1379→      <PinModal
+  1380→        key={`clear-pin-${clearPinSeq}`}
+  1381→        open={clearPinOpen}
+  1382→        playerName="ล้างข้อมูลสถิติทั้งหมด"
+  1383→        mode="verify"
+  1384→        expectedPin={ADMIN_CLEAR_PIN}
+  1385→        onSuccess={() => {
+  1386→          setClearPinOpen(false);
+  1387→          doClearData();
+  1388→        }}
+  1389→        onClose={() => setClearPinOpen(false)}
+  1390→        onError={(msg) => showAlert(msg)}
+  1391→        playSound={playSound}
+  1392→      />
+  1393→    </div>
+  1394→  );
+  1395→}
+  1396→

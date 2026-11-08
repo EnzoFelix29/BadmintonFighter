@@ -1,0 +1,802 @@
+     1→'use client';
+     2→
+     3→import { useEffect, useRef, useState } from 'react';
+     4→import { useTheme } from 'next-themes';
+     5→import { getSkin, type Skin } from '@/lib/characters';
+     6→import { getGear, type GearKind, type GearSkin } from '@/lib/gear';
+     7→import { type PlayerProfile } from '@/lib/players';
+     8→import { PixelAvatar, TeamPlayersAvatar, type PlayerInfo } from '@/components/pixel-avatar';
+     9→import { WinRateRing } from '@/components/win-rate-ring';
+    10→import { CharacterPicker, type PickerSlot } from '@/components/character-picker';
+    11→import { GearPixel } from '@/components/gear-pixel';
+    12→import { SkinReel } from '@/components/skin-reel';
+    13→import { ShopModal } from '@/components/shop-modal';
+    14→import { PinModal } from '@/components/pin-modal';
+    15→import { RegisterModal, type RosterAction } from '@/components/register-modal';
+    16→
+    17→interface PlayerSlot {
+    18→  name: string; // ชื่อผู้เล่นที่เลือกจากรายชื่อที่ลงทะเบียนไว้ ('' = ยังไม่เลือก)
+    19→}
+    20→
+    21→// สิ่งที่จะทำต่อทันทีเมื่อยืนยันรหัส PIN สำเร็จ (ล็อคอินแก้ไขสกินของตัวเอง)
+    22→interface PinIntent {
+    23→  kind: RosterAction | 'reel' | 'picker';
+    24→  slot?: PickerSlot;
+    25→}
+    26→
+    27→interface PinRequest {
+    28→  name: string;
+    29→  mode: 'verify' | 'set';
+    30→  intent: PinIntent | null;
+    31→  seq: number; // บังคับ remount โมดอล PIN ทุกครั้งที่เปิด
+    32→}
+    33→
+    34→interface Match {
+    35→  id: number;
+    36→  court: string;
+    37→  type: string;
+    38→  teamA: string;
+    39→  teamB: string;
+    40→  playersA?: PlayerInfo[];
+    41→  playersB?: PlayerInfo[];
+    42→  scoreA: number;
+    43→  scoreB: number;
+    44→  maxScore: string;
+    45→  date?: string;
+    46→}
+    47→
+    48→interface TeamStat {
+    49→  name: string;
+    50→  played: number;
+    51→  win: number;
+    52→  lose: number;
+    53→}
+    54→
+    55→interface RankedTeam extends TeamStat {
+    56→  winRate: number;
+    57→}
+    58→
+    59→// วันที่วันนี้ตามเวลาท้องถิ่น (รูปแบบ yyyy-mm-dd สำหรับ date input)
+    60→function todayISO(): string {
+    61→  const d = new Date();
+    62→  const y = d.getFullYear();
+    63→  const m = String(d.getMonth() + 1).padStart(2, '0');
+    64→  const day = String(d.getDate()).padStart(2, '0');
+    65→  return `${y}-${m}-${day}`;
+    66→}
+    67→
+    68→// แปลงเป็นรูปแบบไทย ด/ด/ดดด พ.ศ.
+    69→function formatThaiDate(iso?: string): string {
+    70→  if (!iso) return '-';
+    71→  const parts = iso.split('-');
+    72→  if (parts.length !== 3) return iso;
+    73→  const [y, m, d] = parts.map(Number);
+    74→  if (!y || !m || !d) return iso;
+    75→  return `${d}/${m}/${y + 543}`;
+    76→}
+    77→
+    78→// สีตราอันดับ: ทอง / เงิน / ทองแดง / ธรรมดา
+    79→function rankBadgeClass(index: number): string {
+    80→  if (index === 0) return 'bg-gradient-to-br from-amber-300 to-yellow-500 text-white shadow-amber-400/40';
+    81→  if (index === 1) return 'bg-gradient-to-br from-slate-300 to-slate-400 text-white shadow-slate-400/40';
+    82→  if (index === 2) return 'bg-gradient-to-br from-orange-300 to-amber-700 text-white shadow-orange-400/40';
+    83→  return 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400';
+    84→}
+    85→
+    86→type SoundKind = 'success' | 'error' | 'open' | 'clear' | 'select' | 'tick';
+    87→
+    88→// แถวผู้เล่น 1 คน: ปุ่มอวตาร (คลิกเปิดตู้ Reel — ยืนยัน PIN ก่อน)
+    89→// + ช่องเลือกชื่อจากผู้เล่นที่ลงทะเบียนไว้ (สกินโหลดตามโปรไฟล์อัตโนมัติ) + ลิงก์เปลี่ยนตัวละคร
+    90→function PlayerSlotField({
+    91→  id,
+    92→  label,
+    93→  slot,
+    94→  profile,
+    95→  players,
+    96→  takenNames,
+    97→  accent,
+    98→  onSelectName,
+    99→  onOpenPicker,
+   100→  onOpenReel,
+   101→  onOpenRegister,
+   102→}: {
+   103→  id: string;
+   104→  label: string;
+   105→  slot: PlayerSlot;
+   106→  profile?: PlayerProfile;
+   107→  players: PlayerProfile[];
+   108→  takenNames: string[]; // ชื่อที่ถูกใช้อยู่ในสล็อตอื่นของแมตช์นี้
+   109→  accent: 'blue' | 'rose';
+   110→  onSelectName: (name: string) => void;
+   111→  onOpenPicker: () => void;
+   112→  onOpenReel: () => void;
+   113→  onOpenRegister: () => void;
+   114→}) {
+   115→  const styles =
+   116→    accent === 'blue'
+   117→      ? {
+   118→          border: 'border-blue-200 dark:border-blue-800',
+   119→          btnBg: 'from-blue-50 to-blue-100 dark:from-blue-900/60 dark:to-blue-950',
+   120→          input:
+   121→            'bg-white border-blue-200 text-blue-700 focus:ring-blue-400 dark:bg-blue-950/50 dark:text-blue-300',
+   122→          link: 'text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300',
+   123→        }
+   124→      : {
+   125→          border: 'border-rose-200 dark:border-rose-900',
+   126→          btnBg: 'from-rose-50 to-rose-100 dark:from-rose-900/60 dark:to-rose-950',
+   127→          input:
+   128→            'bg-white border-rose-200 text-rose-700 focus:ring-rose-400 dark:bg-rose-950/40 dark:text-rose-300',
+   129→          link: 'text-rose-500 hover:text-rose-700 dark:text-rose-400 dark:hover:text-rose-300',
+   130→        };
+   131→
+   132→  const skin = profile ? getSkin(profile.skinId) : undefined;
+   133→  const racket = profile ? getGear(profile.racketId) : undefined;
+   134→  const shoe = profile ? getGear(profile.shoeId) : undefined;
+   135→
+   136→  return (
+   137→    <div>
+   138→      <div className="flex items-center justify-between mb-1">
+   139→        <label htmlFor={id} className="text-xs font-medium text-gray-500 dark:text-gray-400">
+   140→          {label}
+   141→        </label>
+   142→        <button
+   143→          type="button"
+   144→          onClick={onOpenPicker}
+   145→          className={`text-[10px] font-semibold transition cursor-pointer ${styles.link}`}
+   146→        >
+   147→          <i className="fa-solid fa-user-pen mr-0.5"></i>เปลี่ยนตัวละคร
+   148→        </button>
+   149→      </div>
+   150→      <div className="flex items-stretch gap-2">
+   151→        <button
+   152→          type="button"
+   153→          onClick={onOpenReel}
+   154→          aria-label={`เปลี่ยนสกินไม้แบดและรองเท้าของ${label}`}
+   155→          title={
+   156→            profile
+   157→              ? 'เปิดตู้ Reel เปลี่ยนสกินไม้แบด / รองเท้า (ต้องยืนยันรหัส PIN ของเจ้าของ)'
+   158→              : 'เลือกผู้เล่นก่อน'
+   159→          }
+   160→          className={`relative shrink-0 w-11 rounded-xl border bg-gradient-to-b ${styles.border} ${styles.btnBg} flex items-center justify-center transition hover:ring-2 hover:ring-blue-400/50 focus:ring-2 focus:ring-blue-400 outline-none cursor-pointer`}
+   161→        >
+   162→          {skin && <PixelAvatar skin={skin} size={34} />}
+   163→          {racket && (
+   164→            <span className="absolute -bottom-1 -right-1 w-[18px] h-[18px] rounded-md bg-white dark:bg-gray-800 ring-1 ring-gray-200 dark:ring-gray-600 flex items-center justify-center shadow-sm">
+   165→              <GearPixel gear={racket} size={12} />
+   166→            </span>
+   167→          )}
+   168→          {shoe && (
+   169→            <span className="absolute -bottom-1 -left-1 w-[18px] h-[18px] rounded-md bg-white dark:bg-gray-800 ring-1 ring-gray-200 dark:ring-gray-600 flex items-center justify-center shadow-sm">
+   170→              <GearPixel gear={shoe} size={12} />
+   171→            </span>
+   172→          )}
+   173→        </button>
+   174→        <select
+   175→          id={id}
+   176→          value={slot.name}
+   177→          onChange={(e) => {
+   178→            if (e.target.value === '__register') onOpenRegister();
+   179→            else onSelectName(e.target.value);
+   180→          }}
+   181→          className={`flex-1 min-w-0 border rounded-xl px-3 py-2 text-sm font-semibold outline-none transition focus:ring-2 cursor-pointer ${styles.border} ${styles.input}`}
+   182→        >
+   183→          <option value="">— เลือกผู้เล่น —</option>
+   184→          {players.map((p) => {
+   185→            const taken = takenNames.includes(p.name);
+   186→            return (
+   187→              <option key={p.name} value={p.name} disabled={taken}>
+   188→                {p.name} • {p.coins} เหรียญ{taken ? ' (เล่นอยู่)' : ''}
+   189→              </option>
+   190→            );
+   191→          })}
+   192→          <option value="__register">＋ ลงทะเบียนผู้เล่นใหม่…</option>
+   193→        </select>
+   194→      </div>
+   195→    </div>
+   196→  );
+   197→}
+   198→
+   199→export default function Home() {
+   200→  const [matches, setMatches] = useState<Match[]>([]);
+   201→  const [teamStats, setTeamStats] = useState<Record<string, TeamStat>>({});
+   202→
+   203→  // ฟอร์มกรอกข้อมูล
+   204→  const [court, setCourt] = useState('');
+   205→  const [type, setType] = useState('เดี่ยว');
+   206→  const [maxScore, setMaxScore] = useState('21');
+   207→  // ผู้เล่น 4 สล็อต: เดี่ยวใช้ A1/B1, คู่ใช้ครบทุกสล็อต — เลือกชื่อจากผู้เล่นที่ลงทะเบียนไว้
+   208→  const [slotA1, setSlotA1] = useState<PlayerSlot>({ name: '' });
+   209→  const [slotA2, setSlotA2] = useState<PlayerSlot>({ name: '' });
+   210→  const [slotB1, setSlotB1] = useState<PlayerSlot>({ name: '' });
+   211→  const [slotB2, setSlotB2] = useState<PlayerSlot>({ name: '' });
+   212→  const [pickerSlot, setPickerSlot] = useState<PickerSlot | null>(null);
+   213→  const [reelSlot, setReelSlot] = useState<PickerSlot | null>(null);
+   214→
+   215→  // ระบบสมาชิก: โปรไฟล์ผู้เล่น (เหรียญ + สกินรายบุคคล) + รหัส PIN 6 หลัก + ร้านค้ารายบุคคล
+   216→  const [players, setPlayers] = useState<PlayerProfile[]>([]);
+   217→  const [unlockedNames, setUnlockedNames] = useState<string[]>([]); // ยืนยัน PIN แล้วในเซสชันนี้
+   218→  const [pinReq, setPinReq] = useState<PinRequest | null>(null);
+   219→  const [registerOpen, setRegisterOpen] = useState(false);
+   220→  const [registerBackTo, setRegisterBackTo] = useState<PickerSlot | null>(null);
+   221→  const [shopFor, setShopFor] = useState<string | null>(null); // ชื่อผู้เล่นที่เปิดร้านค้า
+   222→  // รหัส PIN ที่ยืนยันผ่านเซิร์ฟเวอร์แล้วในเซสชันนี้ (ใช้แนบไปกับคำสั่งแก้ไข/ซื้อ/ลบ)
+   223→  const [sessionPins, setSessionPins] = useState<Record<string, string>>({});
+   224→  const [loaded, setLoaded] = useState(false); // โหลดข้อมูลจากเซิร์ฟเวอร์สำเร็จแล้ว
+   225→  // โมดอล PIN ก่อนล้างข้อมูล (ยืนยันกับเซิร์ฟเวอร์)
+   226→  const [clearPinOpen, setClearPinOpen] = useState(false);
+   227→  const [clearPinSeq, setClearPinSeq] = useState(0); // บังคับ remount โมดอล PIN ทุกครั้งที่เปิด
+   228→  const [scoreA, setScoreA] = useState('');
+   229→  const [scoreB, setScoreB] = useState('');
+   230→  const [matchDate, setMatchDate] = useState('');
+   231→
+   232→  // UI state
+   233→  const [alertMsg, setAlertMsg] = useState<{ msg: string; isError: boolean } | null>(null);
+   234→  const [modalOpen, setModalOpen] = useState(false);
+   235→  const [mounted, setMounted] = useState(false);
+   236→  const [soundMuted, setSoundMuted] = useState(false);
+   237→  const alertTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+   238→  const exportableRef = useRef<HTMLDivElement>(null);
+   239→  const soundMutedRef = useRef(false);
+   240→  const audioCtxRef = useRef<AudioContext | null>(null);
+   241→
+   242→  // Theme (light/dark)
+   243→  const { resolvedTheme, setTheme } = useTheme();
+   244→
+   245→  useEffect(() => {
+   246→    setMounted(true);
+   247→    // ตั้งค่าวันที่เริ่มต้นเป็นวันนี้ (real time)
+   248→    setMatchDate(todayISO());
+   249→    // โหลดสถานะเสียง
+   250→    try {
+   251→      const muted = localStorage.getItem('badminton_sound') === 'off';
+   252→      soundMutedRef.current = muted;
+   253→      setSoundMuted(muted);
+   254→    } catch {
+   255→      // ไม่มี localStorage ใช้ค่าเริ่มต้น
+   256→    }
+   257→    // โหลดข้อมูลทั้งหมดจากเซิร์ฟเวอร์ (ฐานข้อมูลกลาง — ทุกเครื่องเห็นชุดเดียวกัน)
+   258→    void initFromServer();
+   259→    return () => {
+   260→      if (alertTimer.current) clearTimeout(alertTimer.current);
+   261→    };
+   262→  }, []);
+   263→
+   264→  // ซิงก์ข้อมูลจากเซิร์ฟเวอร์ทุก 12 วินาที + เมื่อกลับมาที่แท็บ (ให้ทุกเครื่อง/ทุกเครือข่ายเห็นข้อมูลชุดเดียวกัน)
+   265→  useEffect(() => {
+   266→    if (!mounted) return;
+   267→    const tick = () => void fetchState();
+   268→    const id = setInterval(tick, 12000);
+   269→    const onVis = () => {
+   270→      if (document.visibilityState === 'visible') tick();
+   271→    };
+   272→    document.addEventListener('visibilitychange', onVis);
+   273→    return () => {
+   274→      clearInterval(id);
+   275→      document.removeEventListener('visibilitychange', onVis);
+   276→    };
+   277→  }, [mounted]);
+   278→
+   279→  // ===== ระบบเสียงเอฟเฟกต์ (Web Audio API — สังเคราะห์เสียงสด ไม่ต้องโหลดไฟล์) =====
+   280→  function getAudioCtx(): AudioContext | null {
+   281→    try {
+   282→      if (!audioCtxRef.current) {
+   283→        const AC =
+   284→          window.AudioContext ||
+   285→          (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+   286→        if (!AC) return null;
+   287→        audioCtxRef.current = new AC();
+   288→      }
+   289→      if (audioCtxRef.current.state === 'suspended') {
+   290→        void audioCtxRef.current.resume();
+   291→      }
+   292→      return audioCtxRef.current;
+   293→    } catch {
+   294→      return null;
+   295→    }
+   296→  }
+   297→
+   298→  function playTone(
+   299→    ctx: AudioContext,
+   300→    freq: number,
+   301→    start: number,
+   302→    duration: number,
+   303→    type: OscillatorType = 'sine',
+   304→    volume = 0.12
+   305→  ) {
+   306→    const osc = ctx.createOscillator();
+   307→    const gain = ctx.createGain();
+   308→    const t0 = ctx.currentTime + start;
+   309→    osc.type = type;
+   310→    osc.frequency.setValueAtTime(freq, t0);
+   311→    gain.gain.setValueAtTime(0.0001, t0);
+   312→    gain.gain.exponentialRampToValueAtTime(volume, t0 + 0.02);
+   313→    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + duration);
+   314→    osc.connect(gain);
+   315→    gain.connect(ctx.destination);
+   316→    osc.start(t0);
+   317→    osc.stop(t0 + duration + 0.05);
+   318→  }
+   319→
+   320→  function playSound(kind: SoundKind) {
+   321→    if (soundMutedRef.current) return;
+   322→    const ctx = getAudioCtx();
+   323→    if (!ctx) return;
+   324→    switch (kind) {
+   325→      case 'success': // บันทึกสำเร็จ: เสียงเหรียญเกม 8-bit ไล่โน้ตขึ้น E5 → G5 → C6
+   326→        playTone(ctx, 659.25, 0, 0.08, 'square', 0.05);
+   327→        playTone(ctx, 783.99, 0.08, 0.08, 'square', 0.05);
+   328→        playTone(ctx, 1046.5, 0.16, 0.25, 'square', 0.05);
+   329→        break;
+   330→      case 'select': // เลือกตัวละคร: บลิปสั้นแบบ 8-bit
+   331→        playTone(ctx, 880, 0, 0.06, 'square', 0.045);
+   332→        playTone(ctx, 1174.66, 0.06, 0.1, 'square', 0.045);
+   333→        break;
+   334→      case 'error': // กรอกไม่ครบ/ผิดพลาด: เสียงต่ำสั้น 2 จังหวะ
+   335→        playTone(ctx, 233.08, 0, 0.15, 'square', 0.05);
+   336→        playTone(ctx, 174.61, 0.13, 0.22, 'square', 0.05);
+   337→        break;
+   338→      case 'open': // เปิดสรุปภาพรวม: โน้ตคู่สั้นเบา
+   339→        playTone(ctx, 523.25, 0, 0.09, 'sine', 0.07);
+   340→        playTone(ctx, 659.25, 0.07, 0.12, 'sine', 0.07);
+   341→        break;
+   342→      case 'clear': // ล้างข้อมูล: ไล่โน้ตลง
+   343→        playTone(ctx, 659.25, 0, 0.1, 'triangle', 0.07);
+   344→        playTone(ctx, 523.25, 0.09, 0.1, 'triangle', 0.07);
+   345→        playTone(ctx, 392, 0.18, 0.2, 'triangle', 0.07);
+   346→        break;
+   347→      case 'tick': // เสียงรีลหมุนทีละช่อง (เบา ๆ)
+   348→        playTone(ctx, 1318.5, 0, 0.03, 'square', 0.018);
+   349→        break;
+   350→    }
+   351→  }
+   352→
+   353→  function toggleSound() {
+   354→    const next = !soundMutedRef.current;
+   355→    soundMutedRef.current = next;
+   356→    setSoundMuted(next);
+   357→    try {
+   358→      localStorage.setItem('badminton_sound', next ? 'off' : 'on');
+   359→    } catch {
+   360→      // บันทึกไม่ได้ก็ข้าม
+   361→    }
+   362→    if (!next) playSound('open'); // เสียงตอบกลับตอนเปิดเสียง
+   363→  }
+   364→
+   365→  function toggleTheme() {
+   366→    setTheme(resolvedTheme === 'dark' ? 'light' : 'dark');
+   367→  }
+   368→
+   369→  function showAlert(msg: string, isError = true) {
+   370→    setAlertMsg({ msg, isError });
+   371→    playSound(isError ? 'error' : 'success');
+   372→    if (alertTimer.current) clearTimeout(alertTimer.current);
+   373→    alertTimer.current = setTimeout(() => setAlertMsg(null), 3000);
+   374→  }
+   375→
+   376→  // ===== ชั้นข้อมูล: ทุกอย่างเรียกผ่านเซิร์ฟเวอร์ (ฐานข้อมูลกลาง — ทุกเครื่องเห็นชุดเดียวกัน) =====
+   377→
+   378→  type AppStatePayload = {
+   379→    matches: Match[];
+   380→    teamStats: Record<string, TeamStat>;
+   381→    players: PlayerProfile[];
+   382→  };
+   383→
+   384→  function applyState(state: AppStatePayload) {
+   385→    setMatches(state.matches ?? []);
+   386→    setTeamStats(state.teamStats ?? {});
+   387→    setPlayers(state.players ?? []);
+   388→  }
+   389→
+   390→  async function fetchState(): Promise<boolean> {
+   391→    try {
+   392→      const r = await fetch('/api/state', { cache: 'no-store' });
+   393→      if (!r.ok) return false;
+   394→      applyState((await r.json()) as AppStatePayload);
+   395→      return true;
+   396→    } catch {
+   397→      return false;
+   398→    }
+   399→  }
+   400→
+   401→  // โหลดครั้งแรก + ย้ายข้อมูลเดิมจาก localStorage ขึ้นเซิร์ฟเวอร์อัตโนมัติ (ครั้งเดียวของเบราว์เซอร์นี้)
+   402→  async function initFromServer() {
+   403→    const ok = await fetchState();
+   404→    setLoaded(ok);
+   405→    try {
+   406→      if (localStorage.getItem('badminton_migrated')) return;
+   407→      const lm = localStorage.getItem('badminton_matches');
+   408→      const lp = localStorage.getItem('badminton_players');
+   409→      localStorage.setItem('badminton_migrated', '1');
+   410→      if (!lm && !lp) return;
+   411→      const payload = {
+   412→        matches: lm ? (JSON.parse(lm) as unknown[]) : [],
+   413→        stats: JSON.parse(localStorage.getItem('badminton_teamStats') ?? '{}') as unknown,
+   414→        players: lp ? (JSON.parse(lp) as unknown[]) : [],
+   415→      };
+   416→      const r = await fetch('/api/import', {
+   417→        method: 'POST',
+   418→        headers: { 'Content-Type': 'application/json' },
+   419→        body: JSON.stringify(payload),
+   420→      });
+   421→      const d = (await r.json()) as {
+   422→        imported?: boolean;
+   423→        matches?: number;
+   424→        players?: number;
+   425→        state?: AppStatePayload;
+   426→        error?: string;
+   427→      };
+   428→      if (d.state) applyState(d.state);
+   429→      if (d.imported && ((d.matches ?? 0) > 0 || (d.players ?? 0) > 0)) {
+   430→        showAlert(
+   431→          `นำเข้าข้อมูลเดิมขึ้นเซิร์ฟเวอร์สำเร็จ: ${d.matches} แมตช์ • ${d.players} ผู้เล่น`,
+   432→          false
+   433→        );
+   434→      }
+   435→    } catch {
+   436→      // ไม่มีข้อมูลเดิม / อ่านไม่ได้ — ข้าม
+   437→    }
+   438→  }
+   439→
+   440→  const JSONH = { 'Content-Type': 'application/json' };
+   441→
+   442→  // POST ไปเซิร์ฟเวอร์ — คืน null เมื่อผิดพลาด (แจ้ง alert ให้แล้ว)
+   443→  async function apiPost<T>(url: string, body: unknown): Promise<T | null> {
+   444→    try {
+   445→      const r = await fetch(url, { method: 'POST', headers: JSONH, body: JSON.stringify(body) });
+   446→      const d = (await r.json().catch(() => ({}))) as T & { error?: string };
+   447→      if (!r.ok) {
+   448→        showAlert(d?.error ?? 'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้');
+   449→        return null;
+   450→      }
+   451→      return d;
+   452→    } catch {
+   453→      showAlert('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้');
+   454→      return null;
+   455→    }
+   456→  }
+   457→
+   458→  // ยืนยัน PIN ผู้เล่นกับเซิร์ฟเวอร์ (สำหรับ PinModal.verifyAsync — เงียบ ๆ ไม่แจ้ง alert ซ้ำ)
+   459→  async function verifyPlayerPin(name: string, pin: string): Promise<boolean> {
+   460→    try {
+   461→      const r = await fetch('/api/player', {
+   462→        method: 'POST',
+   463→        headers: JSONH,
+   464→        body: JSON.stringify({ action: 'verify-pin', name, pin }),
+   465→      });
+   466→      const d = (await r.json()) as { ok?: boolean };
+   467→      return d?.ok === true;
+   468→    } catch {
+   469→      return false;
+   470→    }
+   471→  }
+   472→
+   473→  // ยืนยัน PIN ผู้ดูแลระบบ (โมดอลล้างข้อมูล) — เซิร์ฟเวอร์เป็นผู้ตรวจ
+   474→  async function verifyAdminPinClient(pin: string): Promise<boolean> {
+   475→    try {
+   476→      const r = await fetch('/api/player', {
+   477→        method: 'POST',
+   478→        headers: JSONH,
+   479→        body: JSON.stringify({ action: 'verify-admin', pin }),
+   480→      });
+   481→      const d = (await r.json()) as { ok?: boolean };
+   482→      return d?.ok === true;
+   483→    } catch {
+   484→      return false;
+   485→    }
+   486→  }
+   487→
+   488→  // ล้างข้อมูลทั้งหมด: กดปุ่มแล้วต้องยืนยันรหัส PIN ผู้ดูแลระบบ 6 หลักก่อนเสมอ (เซิร์ฟเวอร์ตรวจรหัส)
+   489→  function requestClearData() {
+   490→    setClearPinSeq((s) => s + 1);
+   491→    setClearPinOpen(true);
+   492→    playSound('open');
+   493→  }
+   494→
+   495→  async function doClearData(pin: string) {
+   496→    const d = await apiPost<{ state?: AppStatePayload }>('/api/clear', { pin });
+   497→    if (!d) return;
+   498→    if (d.state) applyState(d.state);
+   499→    // ล้างข้อมูลสำรองเก่าในเบราว์เซอร์ด้วย กันการ import ซ้ำ
+   500→    try {
+   501→      localStorage.removeItem('badminton_matches');
+   502→      localStorage.removeItem('badminton_teamStats');
+   503→      localStorage.removeItem('badminton_players');
+   504→    } catch {
+   505→      // ข้าม
+   506→    }
+   507→    showAlert('ล้างข้อมูลเรียบร้อยแล้ว', false);
+   508→    playSound('clear');
+   509→  }
+   510→
+   511→  // ===== ระบบสมาชิก: ลงทะเบียน / รหัส PIN / เหรียญและสกินรายบุคคล =====
+   512→
+   513→  const slotStateMap: Record<PickerSlot, PlayerSlot> = { A1: slotA1, A2: slotA2, B1: slotB1, B2: slotB2 };
+   514→  const slotSetterMap: Record<PickerSlot, (s: PlayerSlot) => void> = {
+   515→    A1: setSlotA1,
+   516→    A2: setSlotA2,
+   517→    B1: setSlotB1,
+   518→    B2: setSlotB2,
+   519→  };
+   520→
+   521→  // โปรไฟล์ของผู้เล่นในสล็อต
+   522→  function profileOf(slot: PlayerSlot): PlayerProfile | undefined {
+   523→    return players.find((p) => p.name === slot.name);
+   524→  }
+   525→
+   526→  // เรียกยืนยันรหัส PIN ก่อนแก้ไขสกินของผู้เล่น (ถ้าล็อคอินแล้วในเซสชันนี้ข้ามได้เลย)
+   527→  function requireUnlock(name: string, intent: PinIntent) {
+   528→    if (unlockedNames.includes(name)) {
+   529→      runIntent(name, intent);
+   530→      return;
+   531→    }
+   532→    setPinReq({ name, mode: 'verify', intent, seq: Date.now() });
+   533→  }
+   534→
+   535→  function runIntent(name: string, intent: PinIntent) {
+   536→    if (intent.kind === 'reel' && intent.slot) {
+   537→      setReelSlot(intent.slot);
+   538→      playSound('open');
+   539→    } else if (intent.kind === 'picker' && intent.slot) {
+   540→      setPickerSlot(intent.slot);
+   541→      playSound('open');
+   542→    } else if (intent.kind === 'shop') {
+   543→      setShopFor(name);
+   544→      playSound('open');
+   545→    } else if (intent.kind === 'delete') {
+   546→      removePlayer(name);
+   547→    }
+   548→  }
+   549→
+   550→  // รหัส PIN ถูกต้อง (ยืนยันกับเซิร์ฟเวอร์แล้ว) → ปลดล็อคโปรไฟล์ / บันทึกรหัสใหม่
+   551→  function handlePinSuccess(pin: string) {
+   552→    if (!pinReq) return;
+   553→    const { name, mode, intent } = pinReq;
+   554→    setPinReq(null);
+   555→    if (mode === 'set') {
+   556→      void commitChangePin(name, pin);
+   557→      return;
+   558→    }
+   559→    setUnlockedNames((u) => (u.includes(name) ? u : [...u, name]));
+   560→    setSessionPins((sp) => ({ ...sp, [name]: pin }));
+   561→    playSound('select');
+   562→    if (intent) runIntent(name, intent);
+   563→  }
+   564→
+   565→  // เปลี่ยนรหัส PIN ของผู้เล่น (ต้องผ่านการยืนยันรหัสเดิมในเซสชันนี้แล้ว)
+   566→  async function commitChangePin(name: string, newPin: string) {
+   567→    const cur = sessionPins[name] ?? '';
+   568→    if (!cur) {
+   569→      showAlert('กรุณายืนยันรหัส PIN เดิมอีกครั้ง');
+   570→      return;
+   571→    }
+   572→    const d = await apiPost<{ state?: AppStatePayload }>('/api/player', {
+   573→      action: 'change-pin',
+   574→      name,
+   575→      pin: cur,
+   576→      newPin,
+   577→    });
+   578→    if (!d) return;
+   579→    if (d.state) applyState(d.state);
+   580→    setSessionPins((sp) => ({ ...sp, [name]: newPin }));
+   581→    showAlert('เปลี่ยนรหัส PIN เรียบร้อยแล้ว', false);
+   582→  }
+   583→
+   584→  // ลงทะเบียนผู้เล่นใหม่ → บันทึกลงเซิร์ฟเวอร์ (คืนข้อความ error, '' = สำเร็จ)
+   585→  async function handleRegister(rawName: string, pin: string): Promise<string> {
+   586→    const d = await apiPost<{ state?: AppStatePayload }>('/api/player', {
+   587→      action: 'register',
+   588→      name: rawName,
+   589→      pin,
+   590→    });
+   591→    if (!d) return 'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ ลองอีกครั้ง';
+   592→    const name = rawName.trim();
+   593→    if (d.state) applyState(d.state);
+   594→    // ผู้เล่นเพิ่งตั้งรหัสเอง → ถือว่าล็อคอินแล้วในเซสชันนี้
+   595→    setUnlockedNames((u) => (u.includes(name) ? u : [...u, name]));
+   596→    setSessionPins((sp) => ({ ...sp, [name]: pin }));
+   597→    // ถ้าเปิดฟอร์มลงทะเบียนจากช่องผู้เล่น → เลือกชื่อให้สล็อตนั้นทันที
+   598→    if (registerBackTo) {
+   599→      slotSetterMap[registerBackTo]({ name });
+   600→      setRegisterBackTo(null);
+   601→    }
+   602→    return '';
+   603→  }
+   604→
+   605→  async function removePlayer(name: string) {
+   606→    const d = await apiPost<{ state?: AppStatePayload }>('/api/player', {
+   607→      action: 'delete',
+   608→      name,
+   609→      pin: sessionPins[name] ?? '',
+   610→    });
+   611→    if (!d) return; // apiPost แจ้ง error ให้แล้ว
+   612→    if (d.state) applyState(d.state);
+   613→    setUnlockedNames((u) => u.filter((n) => n !== name));
+   614→    setSessionPins((sp) => {
+   615→      const next = { ...sp };
+   616→      delete next[name];
+   617→      return next;
+   618→    });
+   619→    setSlotA1((s) => (s.name === name ? { name: '' } : s));
+   620→    setSlotA2((s) => (s.name === name ? { name: '' } : s));
+   621→    setSlotB1((s) => (s.name === name ? { name: '' } : s));
+   622→    setSlotB2((s) => (s.name === name ? { name: '' } : s));
+   623→    if (shopFor === name) setShopFor(null);
+   624→    if (reelSlot && slotStateMap[reelSlot].name === name) setReelSlot(null);
+   625→    if (pickerSlot && slotStateMap[pickerSlot].name === name) setPickerSlot(null);
+   626→    showAlert(`ลบผู้เล่น "${name}" เรียบร้อยแล้ว`, false);
+   627→  }
+   628→
+   629→  // ปุ่มในโมดอลลงทะเบียน: ร้านค้า / ลบ (ยังไม่ล็อคอิน → ขอรหัส PIN ก่อน)
+   630→  function rosterAction(name: string, action: RosterAction) {
+   631→    if (action === 'delete') {
+   632→      if (unlockedNames.includes(name)) {
+   633→        if (window.confirm(`ลบผู้เล่น "${name}" พร้อมเหรียญและสกินทั้งหมด? ย้อนกลับไม่ได้`)) {
+   634→          removePlayer(name);
+   635→        }
+   636→      } else {
+   637→        setPinReq({ name, mode: 'verify', intent: { kind: 'delete' }, seq: Date.now() });
+   638→      }
+   639→      return;
+   640→    }
+   641→    requireUnlock(name, { kind: 'shop' });
+   642→  }
+   643→
+   644→  // คลิกช่องตัวละคร → ตู้ Reel (ต้องเลือกผู้เล่น + ยืนยัน PIN ก่อน)
+   645→  function openSlotReel(slotKey: PickerSlot) {
+   646→    const name = slotStateMap[slotKey].name;
+   647→    if (!name) return showAlert('กรุณาเลือกผู้เล่นในช่องนี้ก่อน');
+   648→    requireUnlock(name, { kind: 'reel', slot: slotKey });
+   649→  }
+   650→
+   651→  // ลิงก์เปลี่ยนตัวละคร (ต้องเลือกผู้เล่น + ยืนยัน PIN ก่อน)
+   652→  function openSlotPicker(slotKey: PickerSlot) {
+   653→    const name = slotStateMap[slotKey].name;
+   654→    if (!name) return showAlert('กรุณาเลือกผู้เล่นในช่องนี้ก่อน');
+   655→    requireUnlock(name, { kind: 'picker', slot: slotKey });
+   656→  }
+   657→
+   658→  // เปิดฟอร์มลงทะเบียนจากช่องผู้เล่น (ลงทะเบียนเสร็จจะเลือกชื่อให้อัตโนมัติ)
+   659→  function openRegisterFor(slotKey: PickerSlot) {
+   660→    setRegisterBackTo(slotKey);
+   661→    setRegisterOpen(true);
+   662→    playSound('open');
+   663→  }
+   664→
+   665→  // เลือกสกินตัวละคร → บันทึกลงเซิร์ฟเวอร์เป็นค่าเริ่มต้นของผู้เล่นคนนั้น (ต้องล็อคอินด้วย PIN แล้ว)
+   666→  function pickCharacter(skin: Skin) {
+   667→    if (!pickerSlot) return;
+   668→    const name = slotStateMap[pickerSlot].name;
+   669→    if (!name) return;
+   670→    setPickerSlot(null);
+   671→    void apiPost<{ state?: AppStatePayload }>('/api/player', {
+   672→      action: 'update-profile',
+   673→      name,
+   674→      pin: sessionPins[name] ?? '',
+   675→      patch: { skinId: skin.id },
+   676→    }).then((d) => {
+   677→      if (!d) return;
+   678→      if (d.state) applyState(d.state);
+   679→      playSound('select');
+   680→    });
+   681→  }
+   682→
+   683→  // เลือกสกินอุปกรณ์จากตู้ Reel → บันทึกลงเซิร์ฟเวอร์เป็นค่าเริ่มต้นของผู้เล่นคนนั้น
+   684→  function pickGear(kind: GearKind, gear: GearSkin) {
+   685→    if (!reelSlot) return;
+   686→    const name = slotStateMap[reelSlot].name;
+   687→    if (!name) return;
+   688→    setReelSlot(null);
+   689→    void apiPost<{ state?: AppStatePayload }>('/api/player', {
+   690→      action: 'update-profile',
+   691→      name,
+   692→      pin: sessionPins[name] ?? '',
+   693→      patch: kind === 'racket' ? { racketId: gear.id } : { shoeId: gear.id },
+   694→    }).then((d) => {
+   695→      if (!d) return;
+   696→      if (d.state) applyState(d.state);
+   697→      playSound('select');
+   698→    });
+   699→  }
+   700→
+   701→  // แตะสกินล็อคในรีล → เปิดร้านค้าของผู้เล่นคนนี้ (รีลยังเปิดอยู่)
+   702→  function lockedGearPick() {
+   703→    if (!reelSlot) return;
+   704→    const name = slotStateMap[reelSlot].name;
+   705→    if (!name) return;
+   706→    setShopFor(name);
+   707→    playSound('open');
+   708→  }
+   709→
+   710→  // ซื้อสกินจากร้านค้าด้วยเหรียญรายบุคคล (100 เหรียญ/สกิน) — เซิร์ฟเวอร์ตัดเหรียญและเช็คราคาให้
+   711→  async function buyGear(gear: GearSkin) {
+   712→    if (!shopFor) return;
+   713→    const d = await apiPost<{ state?: AppStatePayload }>('/api/player', {
+   714→      action: 'buy-gear',
+   715→      name: shopFor,
+   716→      pin: sessionPins[shopFor] ?? '',
+   717→      gearId: gear.id,
+   718→    });
+   719→    if (!d) return; // apiPost แจ้ง error ให้แล้ว (เหรียญไม่พอ ฯลฯ)
+   720→    if (d.state) applyState(d.state);
+   721→    playSound('success');
+   722→    showAlert(`ปลดล็อค "${gear.name}" สำเร็จ!`, false);
+   723→  }
+   724→
+   725→  // สลับประเภทการตี เดี่ยว/คู่ (สกินมาจากโปรไฟล์ของแต่ละคนอยู่แล้ว)
+   726→  function changeType(next: string) {
+   727→    setType(next);
+   728→  }
+   729→
+   730→  async function saveMatch() {
+   731→    if (!loaded) return showAlert('กำลังโหลดข้อมูลจากเซิร์ฟเวอร์ ลองอีกครั้งในอีกสักครู่');
+   732→    const courtVal = court.trim() || '-';
+   733→    const isDoubles = type === 'คู่';
+   734→    const slots: PlayerSlot[] = isDoubles ? [slotA1, slotA2, slotB1, slotB2] : [slotA1, slotB1];
+   735→    const sA = parseInt(scoreA);
+   736→    const sB = parseInt(scoreB);
+   737→
+   738→    if (players.length === 0)
+   739→      return showAlert('ยังไม่มีผู้เล่น — กด "＋ ลงทะเบียนผู้เล่นใหม่" ที่ช่องชื่อก่อน');
+   740→    // ทุกช่องต้องเลือกผู้เล่นที่ลงทะเบียนไว้
+   741→    if (slots.some((s) => !s.name)) return showAlert('กรุณาเลือกผู้เล่นให้ครบทุกช่อง');
+   742→    const names = slots.map((s) => s.name);
+   743→    if (new Set(names).size !== names.length)
+   744→      return showAlert('ผู้เล่นต้องไม่ซ้ำกันในแมตช์เดียวกัน');
+   745→    const profs: PlayerProfile[] = [];
+   746→    for (const n of names) {
+   747→      const p = players.find((x) => x.name === n);
+   748→      if (!p) return showAlert('ไม่พบโปรไฟล์ผู้เล่น กรุณาลงทะเบียนใหม่');
+   749→      profs.push(p);
+   750→    }
+   751→    const skinIds = profs.map((p) => p.skinId);
+   752→    if (new Set(skinIds).size !== skinIds.length)
+   753→      return showAlert('สกินตัวละครแต่ละคนต้องไม่ซ้ำกันในแมตช์เดียวกัน');
+   754→    if (isNaN(sA) || isNaN(sB) || sA < 0 || sB < 0) return showAlert('กรุณากรอกคะแนนให้ถูกต้อง');
+   755→    if (sA === sB) return showAlert('แบดมินตันไม่มีผลเสมอ กรุณาตรวจสอบคะแนน');
+   756→
+   757→    const playersA: PlayerInfo[] = isDoubles
+   758→      ? [
+   759→          { name: profs[0].name, skinId: profs[0].skinId, racketId: profs[0].racketId, shoeId: profs[0].shoeId },
+   760→          { name: profs[1].name, skinId: profs[1].skinId, racketId: profs[1].racketId, shoeId: profs[1].shoeId },
+   761→        ]
+   762→      : [{ name: profs[0].name, skinId: profs[0].skinId, racketId: profs[0].racketId, shoeId: profs[0].shoeId }];
+   763→    const playersB: PlayerInfo[] = isDoubles
+   764→      ? [
+   765→          { name: profs[2].name, skinId: profs[2].skinId, racketId: profs[2].racketId, shoeId: profs[2].shoeId },
+   766→          { name: profs[3].name, skinId: profs[3].skinId, racketId: profs[3].racketId, shoeId: profs[3].shoeId },
+   767→        ]
+   768→      : [{ name: profs[1].name, skinId: profs[1].skinId, racketId: profs[1].racketId, shoeId: profs[1].shoeId }];
+   769→
+   770→    // ชื่อทีม: เดี่ยว = ชื่อผู้เล่น, คู่ = "ชื่อ1 / ชื่อ2"
+   771→    const teamAVal = isDoubles ? `${names[0]} / ${names[1]}` : names[0];
+   772→    const teamBVal = isDoubles ? `${names[2]} / ${names[3]}` : names[1];
+   773→
+   774→    const matchData: Match = {
+   775→      id: matches.length + 1,
+   776→      court: courtVal,
+   777→      type,
+   778→      teamA: teamAVal,
+   779→      teamB: teamBVal,
+   780→      playersA,
+   781→      playersB,
+   782→      scoreA: sA,
+   783→      scoreB: sB,
+   784→      maxScore,
+   785→      date: matchDate || todayISO(),
+   786→    };
+   787→
+   788→    // เหรียญรายบุคคล: ผู้เล่นทีมชนะ +3 เหรียญ/คน ทีมแพ้ +1 เหรียญ/คน (เซิร์ฟเวอร์คำนวณและบันทึกให้)
+   789→    const split = isDoubles ? 2 : 1;
+   790→    const winnerNames = sA > sB ? names.slice(0, split) : names.slice(split);
+   791→    const loserNames = sA > sB ? names.slice(split) : names.slice(0, split);
+   792→
+   793→    // บันทึกลงฐานข้อมูลกลางผ่านเซิร์ฟเวอร์ — สถิติทีม + เหรียญรายบุคคลถูกอัปเดตพร้อมกันในธุรกรรมเดียว
+   794→    const d = await apiPost<{ state?: AppStatePayload }>('/api/match', matchData);
+   795→    if (!d) return; // apiPost แจ้ง error ให้แล้ว
+   796→    if (d.state) applyState(d.state);
+   797→
+   798→    setScoreA('');
+   799→    setScoreB('');
+   800→    setMatchDate(todayISO()); // รีเซ็ตกลับเป็นวันนี้สำหรับแมตช์ถัดไป
+
+[showing lines 1-800 of 1553; use offset=801 with limit to continue reading]
