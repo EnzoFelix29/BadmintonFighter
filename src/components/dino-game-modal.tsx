@@ -1,5 +1,6 @@
 'use client';
 
+import { useLang } from '@/lib/i18n';
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import type { HudSkin } from '@/lib/hud-skins';
 
@@ -183,6 +184,7 @@ export function DinoGameModal({
   sound: SoundFn;
   onClose: () => void;
 }) {
+  const { t } = useLang();
   const [phase, setPhase] = useState<Phase>('idle');
   const [best, setBest] = useState(0);
   const [newRecord, setNewRecord] = useState(false);
@@ -385,7 +387,7 @@ export function DinoGameModal({
       className="fixed inset-0 bg-gray-900/70 backdrop-blur-sm z-50 flex justify-center items-center p-4"
       role="dialog"
       aria-modal="true"
-      aria-label="มินิเกมดีโน่รัน Chrome Dino"
+      aria-label={t('มินิเกมดีโน่รัน Chrome Dino')}
       onClick={onClose}
     >
       <div
@@ -396,12 +398,12 @@ export function DinoGameModal({
         <div className="flex justify-between items-center mb-1">
           <h2 className={`flex items-center gap-2 text-base font-extrabold ${skin.score}`}>
             <i className="fa-solid fa-dragon opacity-70"></i>
-            ดีโน่รัน — หลบแคคตัส
+            {t('ดีโน่รัน — หลบแคคตัส')}
           </h2>
           <button
             type="button"
             onClick={onClose}
-            aria-label="ปิดหน้าต่าง"
+            aria-label={t('ปิดหน้าต่าง')}
             className="w-8 h-8 rounded-lg text-gray-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/60 transition flex items-center justify-center cursor-pointer"
           >
             <i className="fa-solid fa-xmark"></i>
@@ -409,13 +411,13 @@ export function DinoGameModal({
         </div>
         <p className={`text-[11px] font-semibold ${skin.sub} rounded-full px-2.5 py-1 inline-flex items-center gap-1`}>
           <i className="fa-solid fa-circle-info"></i>
-          กด SPACE / ↑ หรือแตะจอ = กระโดด • ชนแคคตัส = จบเกม
+          {t('กด SPACE / ↑ หรือแตะจอ = กระโดด • ชนแคคตัส = จบเกม')}
         </p>
 
         {/* สถิติ */}
         <div aria-live="polite" className="mt-3 flex items-center justify-center gap-2 text-xs font-extrabold">
-          <span className={`rounded-full px-2.5 py-1 ${skin.sub}`}>คะแนน: {p.score}</span>
-          <span className={`rounded-full px-2.5 py-1 ${skin.sub}`}>🏆 สถิติสูงสุด: {best}</span>
+          <span className={`rounded-full px-2.5 py-1 ${skin.sub}`}>{t('คะแนน: {score}', { score: p.score })}</span>
+          <span className={`rounded-full px-2.5 py-1 ${skin.sub}`}>{t('🏆 สถิติสูงสุด: {best}', { best })}</span>
         </div>
 
         {/* ===== พื้นที่เล่นเกม ===== */}
@@ -423,7 +425,7 @@ export function DinoGameModal({
           ref={fieldRef}
           role="button"
           tabIndex={0}
-          aria-label="พื้นที่เล่นเกมดีโน่รัน — แตะเพื่อกระโดด"
+          aria-label={t('พื้นที่เล่นเกมดีโน่รัน — แตะเพื่อกระโดด')}
           onPointerDown={(e) => {
             e.preventDefault();
             jump();
@@ -484,19 +486,19 @@ export function DinoGameModal({
           {phase === 'idle' && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/25 backdrop-blur-[1px]">
               <span className="text-3xl" aria-hidden="true">🦖</span>
-              <p className="text-sm font-black text-white drop-shadow">กด SPACE หรือแตะเพื่อเริ่ม</p>
-              <p className="text-[11px] font-semibold text-white/80">กระโดดหลบแคคตัสให้ได้มากที่สุด!</p>
+              <p className="text-sm font-black text-white drop-shadow">{t('กด SPACE หรือแตะเพื่อเริ่ม')}</p>
+              <p className="text-[11px] font-semibold text-white/80">{t('กระโดดหลบแคคตัสให้ได้มากที่สุด!')}</p>
             </div>
           )}
 
           {/* โอเวอร์เลย์จบเกม */}
           {phase === 'over' && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 bg-black/35 backdrop-blur-[1px]">
-              <p className="text-lg font-black text-white drop-shadow">จบเกม! ได้ {p.score} แต้ม</p>
+              <p className="text-lg font-black text-white drop-shadow">{t('จบเกม! ได้ {score} แต้ม', { score: p.score })}</p>
               {newRecord && (
-                <p className="text-sm font-black text-yellow-300 drop-shadow">สถิติใหม่! 🏆</p>
+                <p className="text-sm font-black text-yellow-300 drop-shadow">{t('สถิติใหม่! 🏆')}</p>
               )}
-              <p className="text-[11px] font-semibold text-white/80">กด SPACE หรือแตะเพื่อเล่นใหม่</p>
+              <p className="text-[11px] font-semibold text-white/80">{t('กด SPACE หรือแตะเพื่อเล่นใหม่')}</p>
             </div>
           )}
         </div>
@@ -506,18 +508,18 @@ export function DinoGameModal({
           <button
             type="button"
             onClick={startGame}
-            title={phase === 'idle' ? 'เริ่มเกมดีโน่รัน' : 'เริ่มเกมใหม่'}
+            title={phase === 'idle' ? t('เริ่มเกมดีโน่รัน') : t('เริ่มเกมใหม่')}
             className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition active:scale-95 cursor-pointer ${skin.flipBtn}`}
           >
             <i className={`fa-solid ${phase === 'idle' ? 'fa-play' : 'fa-rotate-right'}`}></i>
-            {phase === 'idle' ? 'เริ่มเกม' : 'เริ่มใหม่'}
+            {phase === 'idle' ? t('เริ่มเกม') : t('เริ่มใหม่')}
           </button>
           <button
             type="button"
             onClick={onClose}
             className="px-4 py-2 rounded-xl text-sm font-bold bg-gray-200 hover:bg-gray-300 text-gray-700 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-200 transition active:scale-95 cursor-pointer"
           >
-            ปิด
+            {t('ปิด')}
           </button>
         </div>
       </div>

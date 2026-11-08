@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { SKINS, type Gender, type Skin } from '@/lib/characters';
+import { useLang } from '@/lib/i18n';
 import { PixelAvatar } from './pixel-avatar';
 
 type Tab = 'all' | Gender;
@@ -28,6 +29,7 @@ export function CharacterPicker({
   onClose: () => void;
 }) {
   const [tab, setTab] = useState<Tab>('all');
+  const { t } = useLang();
 
   if (!open || !slot) return null;
 
@@ -40,7 +42,7 @@ export function CharacterPicker({
       className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-50 flex justify-center items-center p-4"
       role="dialog"
       aria-modal="true"
-      aria-label="เลือกสกินตัวละคร"
+      aria-label={t('เลือกสกินตัวละคร')}
       onClick={onClose}
     >
       <div
@@ -61,16 +63,18 @@ export function CharacterPicker({
             </span>
             <div className="min-w-0">
               <h2 className="text-lg font-extrabold text-gray-800 dark:text-gray-100 leading-tight truncate">
-                เลือกสกินตัวละคร — {playerName || `ทีม ${slot[0]} • ผู้เล่น ${playerNo}`}
+                {t('เลือกสกินตัวละคร — {name}', {
+                  name: playerName || t('ทีม {team} • ผู้เล่น {no}', { team: slot[0], no: playerNo }),
+                })}
               </h2>
               <p className="text-xs text-gray-400">
-                สกิน 8-bit ทั้งหมด {SKINS.length} แบบ • ที่เลือกจะบันทึกเป็นของผู้เล่นคนนี้
+                {t('สกิน 8-bit ทั้งหมด {n} แบบ • ที่เลือกจะบันทึกเป็นของผู้เล่นคนนี้', { n: SKINS.length })}
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            aria-label="ปิดหน้าต่างเลือกตัวละคร"
+            aria-label={t('ปิดหน้าต่างเลือกตัวละคร')}
             className="w-9 h-9 rounded-xl text-gray-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/60 transition flex items-center justify-center shrink-0"
           >
             <i className="fa-solid fa-xmark text-lg"></i>
@@ -81,9 +85,9 @@ export function CharacterPicker({
         <div className="flex gap-2 px-5 pt-4 pb-1">
           {(
             [
-              { key: 'all', label: 'ทั้งหมด', icon: 'fa-user-group', count: SKINS.length },
-              { key: 'male', label: 'ชาย', icon: 'fa-mars', count: SKINS.filter((s) => s.gender === 'male').length },
-              { key: 'female', label: 'หญิง', icon: 'fa-venus', count: SKINS.filter((s) => s.gender === 'female').length },
+              { key: 'all', label: t('ทั้งหมด'), icon: 'fa-user-group', count: SKINS.length },
+              { key: 'male', label: t('ชาย'), icon: 'fa-mars', count: SKINS.filter((s) => s.gender === 'male').length },
+              { key: 'female', label: t('หญิง'), icon: 'fa-venus', count: SKINS.filter((s) => s.gender === 'female').length },
             ] as { key: Tab; label: string; icon: string; count: number }[]
           ).map((t) => (
             <button
@@ -112,7 +116,11 @@ export function CharacterPicker({
                   key={skin.id}
                   onClick={() => !taken && onPick(skin)}
                   disabled={taken}
-                  title={taken ? 'สกินนี้ถูกใช้โดยผู้เล่นคนอื่นในแมตช์นี้แล้ว' : 'เลือกสกินตัวละคร'}
+                  title={
+                    taken
+                      ? t('สกินนี้ถูกใช้โดยผู้เล่นคนอื่นในแมตช์นี้แล้ว')
+                      : t('เลือกสกินตัวละคร')
+                  }
                   aria-pressed={active}
                   className={`relative flex flex-col items-center gap-1 rounded-2xl p-2.5 pt-3 transition ring-1 ${
                     taken
@@ -144,13 +152,14 @@ export function CharacterPicker({
         {/* ท้ายโมดอล */}
         <div className="px-5 py-3.5 border-t border-gray-100 bg-gray-50 dark:border-gray-800 dark:bg-gray-800/60 flex items-center justify-between gap-3">
           <p className="text-[11px] text-gray-400 hidden sm:block">
-            <i className="fa-solid fa-circle-info mr-1"></i>สกินเดียวกันใช้ได้คนละ 1 คนต่อแมตช์ — เลือกเลย ไม่ต้องใส่รหัส
+            <i className="fa-solid fa-circle-info mr-1"></i>
+            {t('สกินเดียวกันใช้ได้คนละ 1 คนต่อแมตช์ — เลือกเลย ไม่ต้องใส่รหัส')}
           </p>
           <button
             onClick={onClose}
             className="ml-auto bg-gray-600 hover:bg-gray-700 text-white px-5 py-2 rounded-xl font-semibold shadow transition text-sm"
           >
-            ยกเลิก
+            {t('ยกเลิก')}
           </button>
         </div>
       </div>

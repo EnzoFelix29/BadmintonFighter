@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useLang } from '@/lib/i18n';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import {
   RACKET_SKINS,
   SHOE_SKINS,
@@ -10,6 +11,7 @@ import {
   type GearSkin,
 } from '@/lib/gear';
 import { GearPixel } from './gear-pixel';
+import { ShuttlecockIcon } from './shuttlecock-icon';
 import { PixelAvatar } from './pixel-avatar';
 import type { Skin } from '@/lib/characters';
 
@@ -28,7 +30,7 @@ function ReelStrip({
   onTick,
 }: {
   label: string;
-  icon: string;
+  icon: ReactNode;
   items: GearSkin[];
   currentId: string;
   unlockedIds: string[];
@@ -36,6 +38,7 @@ function ReelStrip({
   onLockedPick: (g: GearSkin) => void;
   onTick: () => void;
 }) {
+  const { t } = useLang();
   const base = Math.max(0, items.findIndex((g) => g.id === currentId));
   const [pos, setPos] = useState(base + items.length); // เริ่มที่สำเนากลาง
   const [spinning, setSpinning] = useState(false);
@@ -104,10 +107,12 @@ function ReelStrip({
     <div>
       <div className="flex items-center justify-between mb-2">
         <h3 className="text-sm font-bold text-gray-700 dark:text-gray-200 flex items-center gap-2">
-          <i className={`fa-solid ${icon} text-blue-500`}></i>
+          <span className="text-blue-500 inline-flex items-center">
+            {icon}
+          </span>
           {label}
           <span className="text-xs font-medium text-gray-400 truncate max-w-[180px]">
-            • {current?.name}
+            • {current && t(current.name)}
           </span>
         </h3>
         <button
@@ -117,7 +122,7 @@ function ReelStrip({
           className="text-xs font-bold px-3 py-1.5 rounded-lg bg-gradient-to-r from-amber-400 to-orange-500 text-white shadow-md shadow-orange-500/20 transition hover:brightness-110 active:scale-95 disabled:opacity-60 disabled:cursor-wait flex items-center gap-1.5"
         >
           <i className={`fa-solid ${spinning ? 'fa-arrows-spin fa-spin' : 'fa-dice'}`}></i>
-          {spinning ? 'กำลังหมุน' : 'สุ่ม'}
+          {spinning ? t('กำลังหมุน') : t('สุ่ม')}
         </button>
       </div>
       <div className="flex items-stretch gap-2">
@@ -125,7 +130,7 @@ function ReelStrip({
           type="button"
           onClick={() => nudge(-1)}
           disabled={spinning}
-          aria-label={`${label} ก่อนหน้า`}
+          aria-label={t('{label} ก่อนหน้า', { label })}
           className="shrink-0 w-8 rounded-xl bg-gray-100 hover:bg-blue-100 text-gray-500 hover:text-blue-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-blue-950 transition disabled:opacity-40 flex items-center justify-center"
         >
           <i className="fa-solid fa-chevron-left text-xs"></i>
@@ -152,7 +157,7 @@ function ReelStrip({
                     key={`${c}-${g.id}`}
                     type="button"
                     onClick={() => moveTo(i)}
-                    title={locked ? `${g.name} — ปลดล็อคที่ร้านค้า ${SHOP_PRICE} เหรียญ` : g.name}
+                    title={locked ? t('{name} — ปลดล็อคที่ร้านค้า {price} เหรียญ', { name: t(g.name), price: SHOP_PRICE }) : t(g.name)}
                     aria-pressed={active}
                     className={`relative shrink-0 w-14 h-14 rounded-xl flex items-center justify-center transition ring-1 ${
                       active
@@ -178,7 +183,7 @@ function ReelStrip({
           type="button"
           onClick={() => nudge(1)}
           disabled={spinning}
-          aria-label={`${label} ถัดไป`}
+          aria-label={t('{label} ถัดไป', { label })}
           className="shrink-0 w-8 rounded-xl bg-gray-100 hover:bg-blue-100 text-gray-500 hover:text-blue-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-blue-950 transition disabled:opacity-40 flex items-center justify-center"
         >
           <i className="fa-solid fa-chevron-right text-xs"></i>
@@ -220,6 +225,7 @@ export function SkinReel({
   onClose: () => void;
   onTick: () => void;
 }) {
+  const { t } = useLang();
   if (!open) return null;
 
   return (
@@ -227,7 +233,7 @@ export function SkinReel({
       className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-50 flex justify-center items-center p-4"
       role="dialog"
       aria-modal="true"
-      aria-label="ตู้ Reel เปลี่ยนสกินอุปกรณ์"
+      aria-label={t('ตู้ Reel เปลี่ยนสกินอุปกรณ์')}
       onClick={onClose}
     >
       <div
@@ -242,34 +248,34 @@ export function SkinReel({
             </span>
             <div className="min-w-0">
               <h2 className="text-lg font-extrabold text-gray-800 dark:text-gray-100 leading-tight">
-                ตู้ Reel — {playerName}
+                {t('ตู้ Reel — {name}', { name: playerName })}
               </h2>
               <p className="text-xs text-gray-400 truncate">
-                {slotLabel} • สกินที่เลือกจะบันทึกเป็นของผู้เล่นคนนี้
+                {t('{slotLabel} • สกินที่เลือกจะบันทึกเป็นของผู้เล่นคนนี้', { slotLabel })}
               </p>
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <span
               className="bg-amber-100 text-amber-700 ring-1 ring-amber-200 dark:bg-amber-950/70 dark:text-amber-300 dark:ring-amber-900 px-2.5 py-1.5 rounded-xl text-sm font-extrabold flex items-center gap-1.5"
-              title={`เหรียญสะสมของ ${playerName}`}
+              title={t('เหรียญสะสมของ {name}', { name: playerName })}
             >
               <i className="fa-solid fa-coins"></i>
               {coins}
             </span>
             <button
               onClick={onOpenShop}
-              aria-label="เปิดร้านค้าสกินของผู้เล่นนี้"
-              title="ร้านค้าสกินเท่ห์ — ปลดล็อคด้วยเหรียญของผู้เล่นคนนี้"
+              aria-label={t('เปิดร้านค้าสกินของผู้เล่นนี้')}
+              title={t('ร้านค้าสกินเท่ห์ — ปลดล็อคด้วยเหรียญของผู้เล่นคนนี้')}
               className="bg-amber-400 hover:bg-amber-500 text-white px-3 py-2 rounded-xl font-bold transition text-xs flex items-center gap-1.5 shadow-md shadow-amber-500/20"
             >
               <i className="fa-solid fa-bag-shopping"></i>
-              <span className="hidden sm:inline">ร้านค้า</span>
+              <span className="hidden sm:inline">{t('ร้านค้า')}</span>
             </button>
           </div>
           <button
             onClick={onClose}
-            aria-label="ปิดตู้เปลี่ยนสกินอุปกรณ์"
+            aria-label={t('ปิดตู้เปลี่ยนสกินอุปกรณ์')}
             className="w-9 h-9 rounded-xl text-gray-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/60 transition flex items-center justify-center shrink-0"
           >
             <i className="fa-solid fa-xmark text-lg"></i>
@@ -279,8 +285,8 @@ export function SkinReel({
         {/* รีลสองแถว */}
         <div className="overflow-y-auto p-5 space-y-6">
           <ReelStrip
-            label="ไม้แบด"
-            icon="fa-table-tennis-paddle-ball"
+            label={t('ไม้แบด')}
+            icon={<ShuttlecockIcon className="w-4 h-4" />}
             items={RACKET_SKINS}
             currentId={currentRacketId}
             unlockedIds={unlockedIds}
@@ -289,8 +295,8 @@ export function SkinReel({
             onTick={onTick}
           />
           <ReelStrip
-            label="รองเท้าแบด"
-            icon="fa-shoe-prints"
+            label={t('รองเท้าแบด')}
+            icon={<i className="fa-solid fa-shoe-prints" />}
             items={SHOE_SKINS}
             currentId={currentShoeId}
             unlockedIds={unlockedIds}
@@ -300,8 +306,7 @@ export function SkinReel({
           />
           <p className="text-[11px] text-gray-400 flex items-center gap-1.5">
             <i className="fa-solid fa-circle-info"></i>
-            สกินที่มีสัญลักษณ์กุญแจคือสกินเท่ห์พิเศษจากร้านค้า — แตะเพื่อไปปลดล็อคที่ร้านค้า (
-            {SHOP_PRICE} เหรียญ/สกิน)
+            {t('สกินที่มีสัญลักษณ์กุญแจคือสกินเท่ห์พิเศษจากร้านค้า — แตะเพื่อไปปลดล็อคที่ร้านค้า ({price} เหรียญ/สกิน)', { price: SHOP_PRICE })}
           </p>
         </div>
 
@@ -309,13 +314,13 @@ export function SkinReel({
         <div className="px-5 py-3.5 border-t border-gray-100 bg-gray-50 dark:border-gray-800 dark:bg-gray-800/60 flex items-center justify-between gap-3">
           <p className="text-[11px] text-gray-400 hidden sm:block">
             <i className="fa-solid fa-shirt mr-1"></i>
-            สกินอุปกรณ์เป็นแค่ลุค — สถิติการเล่นไม่เปลี่ยนตาม
+            {t('สกินอุปกรณ์เป็นแค่ลุค — สถิติการเล่นไม่เปลี่ยนตาม')}
           </p>
           <button
             onClick={onClose}
             className="ml-auto bg-gray-600 hover:bg-gray-700 text-white px-5 py-2 rounded-xl font-semibold shadow transition text-sm"
           >
-            ยกเลิก
+            {t('ยกเลิก')}
           </button>
         </div>
       </div>

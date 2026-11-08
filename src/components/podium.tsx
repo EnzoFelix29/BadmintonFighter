@@ -1,6 +1,7 @@
 'use client';
 
 import { TeamPlayersAvatar, type PlayerInfo } from './pixel-avatar';
+import { useLang } from '@/lib/i18n';
 
 export interface PodiumTeam {
   name: string;
@@ -46,11 +47,12 @@ function PodiumColumn({
   place: Place;
   playersMap: Record<string, PlayerInfo[]>;
 }) {
+  const { t } = useLang();
   const conf = PLACE_STYLE[place];
   return (
     <div className="flex flex-col items-center w-24 sm:w-36 min-w-0">
       {conf.crown ? (
-        <span className="text-2xl sm:text-3xl leading-none mb-1" role="img" aria-label="แชมป์">
+        <span className="text-2xl sm:text-3xl leading-none mb-1" role="img" aria-label={t('แชมป์')}>
           👑
         </span>
       ) : (
@@ -58,7 +60,7 @@ function PodiumColumn({
       )}
       <span
         className={`w-9 h-9 rounded-full flex items-center justify-center text-sm shrink-0 ${conf.medal}`}
-        title={`อันดับ ${place}`}
+        title={t('อันดับ {n}', { n: place })}
       >
         <i className="fa-solid fa-medal"></i>
       </span>
@@ -69,7 +71,11 @@ function PodiumColumn({
         {team.name}
       </p>
       <p className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 text-center">
-        {team.winRate.toFixed(1)}% • ชนะ {team.win} แพ้ {team.lose}
+        {t('{wr}% • ชนะ {w} แพ้ {l}', {
+          wr: team.winRate.toFixed(1),
+          w: team.win,
+          l: team.lose,
+        })}
       </p>
       <div
         className={`w-full ${conf.bar} rounded-t-xl mt-2 flex items-start justify-center pt-1 ring-1 ring-black/5`}
@@ -89,6 +95,7 @@ export function Podium({
   teams: PodiumTeam[]; // เรียงอันดับแล้ว (สูงสุดก่อน)
   playersMap: Record<string, PlayerInfo[]>;
 }) {
+  const { t } = useLang();
   if (teams.length === 0) return null;
   const first = teams[0];
   const second = teams[1];
@@ -98,7 +105,7 @@ export function Podium({
     <section className="bg-gradient-to-b from-blue-50/70 to-white dark:from-blue-950/40 dark:to-gray-900 ring-1 ring-blue-100 dark:ring-blue-900/60 rounded-2xl p-4 sm:p-6">
       <h3 className="text-base font-bold text-gray-700 dark:text-gray-200 mb-4 flex items-center justify-center gap-2">
         <i className="fa-solid fa-ranking-star text-amber-500"></i>
-        แท่นรับเหรียญรางวัล • อันดับ 1-3
+        {t('แท่นรับเหรียญรางวัล • อันดับ 1-3')}
       </h3>
       <div className="flex items-end justify-center gap-4 sm:gap-8">
         {second && <PodiumColumn team={second} place={2} playersMap={playersMap} />}

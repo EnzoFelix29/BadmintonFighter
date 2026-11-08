@@ -1,5 +1,6 @@
 'use client';
 
+import { useLang } from '@/lib/i18n';
 import { useEffect, useState } from 'react';
 import type { HudSkin } from '@/lib/hud-skins';
 
@@ -102,6 +103,7 @@ export function HiLoGameModal({
   sound: SoundFn;
   onClose: () => void;
 }) {
+  const { t } = useLang();
   const [card, setCard] = useState<Card>({ rank: 7, suit: 0 }); // ไพ่ปัจจุบัน
   const [started, setStarted] = useState(false); // กดเริ่มเกมแล้ว (สุ่มไพ่จริง)
   const [streak, setStreak] = useState(0); // ทายถูกต่อกันกี่ครั้ง
@@ -114,7 +116,8 @@ export function HiLoGameModal({
   useEffect(() => {
     if (!open) return;
     try {
-      setBest(parseInt(localStorage.getItem(HILO_BEST_KEY) || '0', 10) || 0);
+      const best = parseInt(localStorage.getItem(HILO_BEST_KEY) || '0', 10) || 0;
+      queueMicrotask(() => setBest(best));
     } catch {
       // ไม่มี localStorage ข้าม
     }
@@ -166,7 +169,7 @@ export function HiLoGameModal({
       className="fixed inset-0 bg-gray-900/70 backdrop-blur-sm z-50 flex justify-center items-center p-4"
       role="dialog"
       aria-modal="true"
-      aria-label="มินิเกม HI-LO"
+      aria-label={t('มินิเกม HI-LO')}
       onClick={over ? onClose : undefined}
     >
       <div
@@ -177,12 +180,12 @@ export function HiLoGameModal({
         <div className="flex justify-between items-center mb-1">
           <h2 className={`flex items-center gap-2 text-base font-extrabold ${skin.score}`}>
             <i className="fa-solid fa-spade opacity-70"></i>
-            HI-LO ทายไพ่สูง-ต่ำ
+            {t('HI-LO ทายไพ่สูง-ต่ำ')}
           </h2>
           <button
             type="button"
             onClick={onClose}
-            aria-label="ปิดหน้าต่าง"
+            aria-label={t('ปิดหน้าต่าง')}
             className="w-8 h-8 rounded-lg text-gray-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/60 transition flex items-center justify-center cursor-pointer"
           >
             <i className="fa-solid fa-xmark"></i>
@@ -190,13 +193,13 @@ export function HiLoGameModal({
         </div>
         <p className={`text-[11px] font-semibold ${skin.sub} rounded-full px-2.5 py-1 inline-flex items-center gap-1`}>
           <i className="fa-solid fa-circle-info"></i>
-          A ต่ำสุด • K สูงสุด • แต้มเท่ากับ = แพ้
+          {t('A ต่ำสุด • K สูงสุด • แต้มเท่ากับ = แพ้')}
         </p>
 
         {/* สถิติ */}
         <div className="mt-3 flex items-center justify-center gap-2 text-xs font-extrabold">
-          <span className={`rounded-full px-2.5 py-1 ${skin.sub}`}>ต่อปัจจุบัน: {streak}</span>
-          <span className={`rounded-full px-2.5 py-1 ${skin.sub}`}>🏆 สถิติสูงสุด: {best}</span>
+          <span className={`rounded-full px-2.5 py-1 ${skin.sub}`}>{t('ต่อปัจจุบัน: {n}', { n: streak })}</span>
+          <span className={`rounded-full px-2.5 py-1 ${skin.sub}`}>{t('🏆 สถิติสูงสุด: {n}', { n: best })}</span>
         </div>
 
         {/* ไพ่ปัจจุบัน */}
@@ -214,18 +217,18 @@ export function HiLoGameModal({
           {/* ข้อความสถานะ */}
           <div className="mt-3 text-center min-h-[3rem]">
             {!started ? (
-              <p className={`text-sm font-bold ${skin.score}`}>กด &quot;เริ่มเกม&quot; เพื่อสุ่มไพ่ใบแรก</p>
+              <p className={`text-sm font-bold ${skin.score}`}>{t('กด "เริ่มเกม" เพื่อสุ่มไพ่ใบแรก')}</p>
             ) : over ? (
               <>
-                <p className="text-lg font-black text-rose-500">แพ้! ทายถูก {streak} ต่อ</p>
+                <p className="text-lg font-black text-rose-500">{t('แพ้! ทายถูก {n} ต่อ', { n: streak })}</p>
                 <p className="text-xs text-gray-400 mt-0.5">
-                  {streak >= best && streak > 0 ? 'สถิติใหม่! 🏆' : 'ลองใหม่ คราวนี้ต้องไปไกลกว่านี้'}
+                  {streak >= best && streak > 0 ? t('สถิติใหม่! 🏆') : t('ลองใหม่ คราวนี้ต้องไปไกลกว่านี้')}
                 </p>
               </>
             ) : (
               <p className={`text-sm font-bold ${skin.score}`}>
-                ไพ่ต่อไปจะ <span className="text-emerald-500">สูงกว่า</span> หรือ{' '}
-                <span className="text-sky-500">ต่ำกว่า</span>?
+                {t('ไพ่ต่อไปจะ')} <span className="text-emerald-500">{t('สูงกว่า')}</span> {t('หรือ')}{' '}
+                <span className="text-sky-500">{t('ต่ำกว่า')}</span>?
               </p>
             )}
           </div>
@@ -233,7 +236,7 @@ export function HiLoGameModal({
 
         {/* ไพ่เก่า (เทรล) */}
         {trail.length > 0 && (
-          <div className="flex gap-1.5 justify-center flex-wrap mt-1" aria-label="ไพ่ก่อนหน้า">
+          <div className="flex gap-1.5 justify-center flex-wrap mt-1" aria-label={t('ไพ่ก่อนหน้า')}>
             {trail.map((c, i) => (
               <PixelCard key={i} card={c} />
             ))}
@@ -246,19 +249,19 @@ export function HiLoGameModal({
             type="button"
             onClick={() => guess('lo')}
             disabled={over || !started}
-            title="ทายว่าไพ่ต่อไปต่ำกว่า (LO)"
+            title={t('ทายว่าไพ่ต่อไปต่ำกว่า (LO)')}
             className={`inline-flex items-center justify-center gap-2 px-4 py-3 text-sm font-black transition active:scale-95 disabled:opacity-50 cursor-pointer ${skin.flipBtn}`}
           >
-            <i className="fa-solid fa-arrow-down"></i> ต่ำ (LO)
+            <i className="fa-solid fa-arrow-down"></i> {t('ต่ำ (LO)')}
           </button>
           <button
             type="button"
             onClick={() => guess('hi')}
             disabled={over || !started}
-            title="ทายว่าไพ่ต่อไปสูงกว่า (HI)"
+            title={t('ทายว่าไพ่ต่อไปสูงกว่า (HI)')}
             className={`inline-flex items-center justify-center gap-2 px-4 py-3 text-sm font-black transition active:scale-95 disabled:opacity-50 cursor-pointer ${skin.flipBtn}`}
           >
-            <i className="fa-solid fa-arrow-up"></i> สูง (HI)
+            <i className="fa-solid fa-arrow-up"></i> {t('สูง (HI)')}
           </button>
         </div>
 
@@ -267,18 +270,18 @@ export function HiLoGameModal({
           <button
             type="button"
             onClick={restart}
-            title={started ? 'เริ่มเกมใหม่ สุ่มไพ่ใหม่ทั้งหมด' : 'เริ่มเกม — สุ่มไพ่ใบแรก'}
+            title={started ? t('เริ่มเกมใหม่ สุ่มไพ่ใหม่ทั้งหมด') : t('เริ่มเกม — สุ่มไพ่ใบแรก')}
             className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition active:scale-95 cursor-pointer ${skin.flipBtn}`}
           >
             <i className={`fa-solid ${started ? 'fa-rotate-right' : 'fa-play'}`}></i>
-            {started ? 'เริ่มใหม่' : 'เริ่มเกม'}
+            {started ? t('เริ่มใหม่') : t('เริ่มเกม')}
           </button>
           <button
             type="button"
             onClick={onClose}
             className="px-4 py-2 rounded-xl text-sm font-bold bg-gray-200 hover:bg-gray-300 text-gray-700 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-200 transition active:scale-95 cursor-pointer"
           >
-            ปิด
+            {t('ปิด')}
           </button>
         </div>
       </div>

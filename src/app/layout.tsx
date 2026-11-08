@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { ThemeProvider } from "@/components/theme-provider";
+import { LangProvider } from "@/lib/i18n";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -15,9 +16,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ระบบเก็บสถิติการแข่งขันแบดมินตัน",
+  title: "ระบบเก็บสถิติการแข่งขันแบดมินตัน | Badminton Stats",
   description:
-    "บันทึกผลการแข่งขันแบดมินตัน สรุปสถิติ Win Rate และประวัติการแข่งขันของแต่ละทีม",
+    "บันทึกผลการแข่งขันแบดมินตัน สรุปสถิติ Win Rate และประวัติการแข่งขันของแต่ละทีม — Badminton match tracker with live win-rate stats",
   icons: {
     icon: "https://z-cdn.chatglm.cn/z-ai/static/logo.svg",
   },
@@ -50,8 +51,10 @@ export default function RootLayout({
           precedence="default"
         />
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} disableTransitionOnChange>
-          {children}
-          <Toaster />
+          <LangProvider>
+            {children}
+            <Toaster />
+          </LangProvider>
         </ThemeProvider>
       </body>
     </html>

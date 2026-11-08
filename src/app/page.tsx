@@ -15,6 +15,7 @@ import {
   type PlayerProfile,
 } from '@/lib/players';
 import { getHudSkin, HUD_SKIN_KEY } from '@/lib/hud-skins';
+import { useLang, type Lang } from '@/lib/i18n';
 import { PixelAvatar, TeamPlayersAvatar, type PlayerInfo } from '@/components/pixel-avatar';
 import { ScoreHud } from '@/components/score-hud';
 import { FlipCoinModal } from '@/components/flip-coin-modal';
@@ -25,6 +26,7 @@ import { CrocGameModal } from '@/components/croc-game-modal';
 import { HiLoGameModal } from '@/components/hilo-game-modal';
 import { DinoGameModal } from '@/components/dino-game-modal';
 import { RulesModal } from '@/components/rules-modal';
+import { ShuttlecockIcon } from '@/components/shuttlecock-icon';
 import { Podium } from '@/components/podium';
 import { WinRateRing } from '@/components/win-rate-ring';
 import { CharacterPicker, type PickerSlot } from '@/components/character-picker';
@@ -71,14 +73,14 @@ function todayISO(): string {
   return `${y}-${m}-${day}`;
 }
 
-// แปลงเป็นรูปแบบไทย ด/ด/ดดด พ.ศ.
-function formatThaiDate(iso?: string): string {
+// แปลงเป็นรูปแบบวันที่ตามภาษา: ไทย = ด/ด/ดดด พ.ศ. (+543) | อังกฤษ = ด/ด/ดดด ค.ศ.
+function formatMatchDate(iso?: string, lang: Lang = 'th'): string {
   if (!iso) return '-';
   const parts = iso.split('-');
   if (parts.length !== 3) return iso;
   const [y, m, d] = parts.map(Number);
   if (!y || !m || !d) return iso;
-  return `${d}/${m}/${y + 543}`;
+  return lang === 'en' ? `${d}/${m}/${y}` : `${d}/${m}/${y + 543}`;
 }
 
 // สีตราอันดับ: ทอง / เงิน / ทองแดง / ธรรมดา
@@ -127,6 +129,7 @@ function PlayerSlotField({
   onOpenReel: () => void;
   onOpenRegister: () => void;
 }) {
+  const { t } = useLang();
   const styles =
     accent === 'blue'
       ? {
@@ -159,18 +162,19 @@ function PlayerSlotField({
           onClick={onOpenPicker}
           className={`text-[10px] font-semibold transition cursor-pointer ${styles.link}`}
         >
-          <i className="fa-solid fa-user-pen mr-0.5"></i>เปลี่ยนตัวละคร
+          <i className="fa-solid fa-user-pen mr-0.5"></i>
+          {t('เปลี่ยนตัวละคร')}
         </button>
       </div>
       <div className="flex items-stretch gap-2">
         <button
           type="button"
           onClick={onOpenReel}
-          aria-label={`เปลี่ยนสกินไม้แบดและรองเท้าของ${label}`}
+          aria-label={t('เปลี่ยนสกินไม้แบดและรองเท้าของ{label}', { label })}
           title={
             profile
-              ? 'เปิดตู้ Reel เปลี่ยนสกินไม้แบด / รองเท้าของผู้เล่นคนนี้'
-              : 'เลือกผู้เล่นก่อน'
+              ? t('เปิดตู้ Reel เปลี่ยนสกินไม้แบด / รองเท้าของผู้เล่นคนนี้')
+              : t('เลือกผู้เล่นก่อน')
           }
           className={`relative shrink-0 w-11 rounded-xl border bg-gradient-to-b ${styles.border} ${styles.btnBg} flex items-center justify-center transition hover:ring-2 hover:ring-blue-400/50 focus:ring-2 focus:ring-blue-400 outline-none cursor-pointer`}
         >
@@ -195,16 +199,17 @@ function PlayerSlotField({
           }}
           className={`flex-1 min-w-0 border rounded-xl px-3 py-2 text-sm font-semibold outline-none transition focus:ring-2 cursor-pointer ${styles.border} ${styles.input}`}
         >
-          <option value="">— เลือกผู้เล่น —</option>
+          <option value="">— {t('เลือกผู้เล่น')} —</option>
           {players.map((p) => {
             const taken = takenNames.includes(p.name);
             return (
               <option key={p.name} value={p.name} disabled={taken}>
-                {p.name} • {p.coins} เหรียญ{taken ? ' (เล่นอยู่)' : ''}
+                {p.name} • {t('{n} เหรียญ', { n: p.coins })}
+                {taken ? t(' (เล่นอยู่)') : ''}
               </option>
             );
           })}
-          <option value="__register">＋ ลงทะเบียนผู้เล่นใหม่…</option>
+          <option value="__register">＋ {t('ลงทะเบียนผู้เล่นใหม่')}…</option>
         </select>
       </div>
     </div>
@@ -212,6 +217,7 @@ function PlayerSlotField({
 }
 
 export default function Home() {
+  const { lang, setLang, t } = useLang();
   const [matches, setMatches] = useState<Match[]>([]);
   const [teamStats, setTeamStats] = useState<Record<string, TeamStat>>({});
 
@@ -537,7 +543,9 @@ export default function Home() {
   function requestClearData() {
     if (
       window.confirm(
-        'ต้องการล้างข้อมูลสถิติทั้งหมดใช่หรือไม่?\n(แมตช์และตารางอันดับจะหายทั้งหมด ย้อนกลับไม่ได้ — โปรไฟล์ผู้เล่น/เหรียญ/สกินยังอยู่)'
+        t(
+          'ต้องการล้างข้อมูลสถิติทั้งหมดใช่หรือไม่?\n(แมตช์และตารางอันดับจะหายทั้งหมด ย้อนกลับไม่ได้ — โปรไฟล์ผู้เล่น/เหรียญ/สกินยังอยู่)'
+        )
       )
     ) {
       doClearData();
@@ -549,7 +557,7 @@ export default function Home() {
     localStorage.removeItem('badminton_teamStats');
     setMatches([]);
     setTeamStats({});
-    showAlert('ล้างข้อมูลเรียบร้อยแล้ว', false);
+    showAlert(t('ล้างข้อมูลเรียบร้อยแล้ว'), false);
     playSound('clear');
   }
 
@@ -571,7 +579,7 @@ export default function Home() {
   // ลงทะเบียนผู้เล่นใหม่ (คืนข้อความ error, '' = สำเร็จ)
   function handleRegister(rawName: string): string {
     const res = registerPlayer(players, rawName);
-    if (!res.ok) return res.error ?? 'ลงทะเบียนไม่สำเร็จ';
+    if (!res.ok) return res.error ?? t('ลงทะเบียนไม่สำเร็จ');
     const name = res.players[res.players.length - 1].name;
     setPlayers(res.players);
     // ถ้าเปิดฟอร์มลงทะเบียนจากช่องผู้เล่น → เลือกชื่อให้สล็อตนั้นทันที
@@ -591,13 +599,13 @@ export default function Home() {
     if (shopFor === name) setShopFor(null);
     if (reelSlot && slotStateMap[reelSlot].name === name) setReelSlot(null);
     if (pickerSlot && slotStateMap[pickerSlot].name === name) setPickerSlot(null);
-    showAlert(`ลบผู้เล่น "${name}" เรียบร้อยแล้ว`, false);
+    showAlert(t('ลบผู้เล่น "{name}" เรียบร้อยแล้ว', { name }), false);
   }
 
   // ปุ่มในโมดอลลงทะเบียน: ร้านค้า / ลบ (ลบมี confirm กันกดพลาด)
   function rosterAction(name: string, action: RosterAction) {
     if (action === 'delete') {
-      if (window.confirm(`ลบผู้เล่น "${name}" พร้อมเหรียญและสกินทั้งหมด? ย้อนกลับไม่ได้`)) {
+      if (window.confirm(t('ลบผู้เล่น {name} พร้อมเหรียญและสกินทั้งหมด? ย้อนกลับไม่ได้', { name }))) {
         removePlayer(name);
       }
       return;
@@ -608,14 +616,14 @@ export default function Home() {
 
   // คลิกช่องตัวละคร → ตู้ Reel เปลี่ยนสกินอุปกรณ์ของผู้เล่นในช่องนั้น
   function openSlotReel(slotKey: PickerSlot) {
-    if (!slotStateMap[slotKey].name) return showAlert('กรุณาเลือกผู้เล่นในช่องนี้ก่อน');
+    if (!slotStateMap[slotKey].name) return showAlert(t('กรุณาเลือกผู้เล่นในช่องนี้ก่อน'));
     setReelSlot(slotKey);
     playSound('open');
   }
 
   // ลิงก์เปลี่ยนตัวละคร → โมดอลเลือกสกินตัวละคร
   function openSlotPicker(slotKey: PickerSlot) {
-    if (!slotStateMap[slotKey].name) return showAlert('กรุณาเลือกผู้เล่นในช่องนี้ก่อน');
+    if (!slotStateMap[slotKey].name) return showAlert(t('กรุณาเลือกผู้เล่นในช่องนี้ก่อน'));
     setPickerSlot(slotKey);
     playSound('open');
   }
@@ -661,10 +669,10 @@ export default function Home() {
   function buyGear(gear: GearSkin) {
     if (!shopFor) return;
     const res = purchaseGear(players, shopFor, gear);
-    if (!res.ok) return showAlert(res.error ?? 'ซื้อสกินไม่สำเร็จ');
+    if (!res.ok) return showAlert(t(res.error ?? 'ซื้อสกินไม่สำเร็จ'));
     setPlayers(res.players);
     playSound('success');
-    showAlert(`ปลดล็อค "${gear.name}" สำเร็จ!`, false);
+    showAlert(t('ปลดล็อค "{name}" สำเร็จ!', { name: t(gear.name) }), false);
   }
 
   // สลับประเภทการตี เดี่ยว/คู่ (สกินมาจากโปรไฟล์ของแต่ละคนอยู่แล้ว)
@@ -680,27 +688,32 @@ export default function Home() {
     const sB = parseInt(scoreB);
 
     if (players.length === 0)
-      return showAlert('ยังไม่มีผู้เล่น — กด "＋ ลงทะเบียนผู้เล่นใหม่" ที่ช่องชื่อก่อน');
+      return showAlert(t('ยังไม่มีผู้เล่น — กด "＋ ลงทะเบียนผู้เล่นใหม่" ที่ช่องชื่อก่อน'));
     // ทุกช่องต้องเลือกผู้เล่นที่ลงทะเบียนไว้
-    if (slots.some((s) => !s.name)) return showAlert('กรุณาเลือกผู้เล่นให้ครบทุกช่อง');
+    if (slots.some((s) => !s.name)) return showAlert(t('กรุณาเลือกผู้เล่นให้ครบทุกช่อง'));
     const names = slots.map((s) => s.name);
     if (new Set(names).size !== names.length)
-      return showAlert('ผู้เล่นต้องไม่ซ้ำกันในแมตช์เดียวกัน');
+      return showAlert(t('ผู้เล่นต้องไม่ซ้ำกันในแมตช์เดียวกัน'));
     const profs: PlayerProfile[] = [];
     for (const n of names) {
       const p = players.find((x) => x.name === n);
-      if (!p) return showAlert('ไม่พบโปรไฟล์ผู้เล่น กรุณาลงทะเบียนใหม่');
+      if (!p) return showAlert(t('ไม่พบโปรไฟล์ผู้เล่น กรุณาลงทะเบียนใหม่'));
       profs.push(p);
     }
     const skinIds = profs.map((p) => p.skinId);
     if (new Set(skinIds).size !== skinIds.length)
-      return showAlert('สกินตัวละครแต่ละคนต้องไม่ซ้ำกันในแมตช์เดียวกัน');
-    if (isNaN(sA) || isNaN(sB) || sA < 0 || sB < 0) return showAlert('กรุณากรอกคะแนนให้ถูกต้อง');
-    if (sA === sB) return showAlert('แบดมินตันไม่มีผลเสมอ กรุณาตรวจสอบคะแนน');
+      return showAlert(t('สกินตัวละครแต่ละคนต้องไม่ซ้ำกันในแมตช์เดียวกัน'));
+    if (isNaN(sA) || isNaN(sB) || sA < 0 || sB < 0) return showAlert(t('กรุณากรอกคะแนนให้ถูกต้อง'));
+    if (sA === sB) return showAlert(t('แบดมินตันไม่มีผลเสมอ กรุณาตรวจสอบคะแนน'));
     // แต้มที่กรอกห้ามเกินจำนวนแต้มที่เลือก (เกมละกี่แต้ม)
     if (sA > scoreCap || sB > scoreCap)
       return showAlert(
-        `แต้มห้ามเกิน ${scoreCap} — คุณเลือกเกมละ ${maxScore} แต้ม (กรอก ${sA}-${sB} ไม่ได้)`
+        t('แต้มห้ามเกิน {cap} — คุณเลือกเกมละ {max} แต้ม (กรอก {a}-{b} ไม่ได้)', {
+          cap: scoreCap,
+          max: maxScore,
+          a: sA,
+          b: sB,
+        })
       );
 
     const playersA: PlayerInfo[] = isDoubles
@@ -766,8 +779,23 @@ export default function Home() {
     setPlayers((ps) => awardCoins(ps, winnerNames, loserNames, coins.winCoins, coins.loseCoins).players);
     showAlert(
       coins.crush
-        ? `บันทึกผลสำเร็จ! ชนะขาด ${Math.max(sA, sB)}-${Math.min(sA, sB)} 🔥 ชนะ: ${winnerNames.join(', ')} +${coins.winCoins} เหรียญ • แพ้: ${loserNames.join(', ')} +${coins.loseCoins} เหรียญ`
-        : `บันทึกผลสำเร็จ! ชนะ: ${winnerNames.join(', ')} +${coins.winCoins} เหรียญ • แพ้: ${loserNames.join(', ')} +${coins.loseCoins} เหรียญ`,
+        ? t(
+            'บันทึกผลสำเร็จ! ชนะขาด {hi}-{lo} 🔥 ชนะ: {winners} +{wc} เหรียญ • แพ้: {losers} +{lc} เหรียญ',
+            {
+              hi: Math.max(sA, sB),
+              lo: Math.min(sA, sB),
+              winners: winnerNames.join(', '),
+              wc: coins.winCoins,
+              losers: loserNames.join(', '),
+              lc: coins.loseCoins,
+            }
+          )
+        : t('บันทึกผลสำเร็จ! ชนะ: {winners} +{wc} เหรียญ • แพ้: {losers} +{lc} เหรียญ', {
+            winners: winnerNames.join(', '),
+            wc: coins.winCoins,
+            losers: loserNames.join(', '),
+            lc: coins.loseCoins,
+          }),
       false
     );
     // (ไม่สุ่มเมนูอาหารอัตโนมัติหลังบันทึกผล — กดปุ่มสุ่มเมนูบน HUD เองเมื่อไหร่ก็ได้)
@@ -856,10 +884,10 @@ export default function Home() {
   const hudSkin = getHudSkin(hudSkinId);
   const hudTeamAName =
     (isDoublesType ? [slotA1.name, slotA2.name] : [slotA1.name]).filter(Boolean).join(' / ') ||
-    'ทีม A';
+    t('ทีม A');
   const hudTeamBName =
     (isDoublesType ? [slotB1.name, slotB2.name] : [slotB1.name]).filter(Boolean).join(' / ') ||
-    'ทีม B';
+    t('ทีม B');
 
   // แผนที่: ชื่อทีม → รายชื่อผู้เล่น (ใช้แสดงอวตารในอันดับ/สรุป, แมตช์ล่าสุดมีน้ำหนักสุดท้าย)
   const teamPlayersMap: Record<string, PlayerInfo[]> = {};
@@ -885,20 +913,47 @@ export default function Home() {
             <span
               className="w-10 h-10 rounded-xl bg-white/15 ring-1 ring-white/30 flex items-center justify-center text-xl shrink-0 shadow-inner"
               role="img"
-              aria-label="แบดมินตัน"
+              aria-label={t('แบดมินตัน')}
             >
               🏸
             </span>
             <div className="min-w-0">
               <h1 className="text-lg sm:text-xl font-extrabold tracking-tight truncate leading-tight">
-                บันทึกสถิติแบดมินตัน
+                {t('บันทึกสถิติแบดมินตัน')}
               </h1>
               <p className="hidden sm:block text-[11px] sm:text-xs text-blue-100/90 font-medium leading-tight">
-                ระบบเก็บสถิติการแข่งขัน • Badminton Stats
+                {t('ระบบเก็บสถิติการแข่งขัน • Badminton Stats')}
               </p>
             </div>
           </div>
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 mx-auto sm:mx-0">
+            {/* ปุ่มสลับภาษา ไทย / English — อยู่บนสุดของหน้า (navbar) จำค่าไว้ใน localStorage */}
+            <div
+              role="group"
+              aria-label={t('ภาษา / Language')}
+              className="flex items-center rounded-xl overflow-hidden border border-white/25 bg-white/5"
+            >
+              <button
+                onClick={() => setLang('th')}
+                aria-pressed={lang === 'th'}
+                title="ไทย — กดเพื่อสลับเป็นภาษาไทย"
+                className={`h-9 px-2.5 text-xs font-extrabold tracking-wide transition cursor-pointer ${
+                  lang === 'th' ? 'bg-white/30 text-white' : 'hover:bg-white/15 text-white/80'
+                }`}
+              >
+                TH
+              </button>
+              <button
+                onClick={() => setLang('en')}
+                aria-pressed={lang === 'en'}
+                title="English — switch to English"
+                className={`h-9 px-2.5 text-xs font-extrabold tracking-wide transition cursor-pointer ${
+                  lang === 'en' ? 'bg-white/30 text-white' : 'hover:bg-white/15 text-white/80'
+                }`}
+              >
+                EN
+              </button>
+            </div>
             {/* ลงทะเบียน/จัดการผู้เล่น — เหรียญและสกินเป็นของรายบุคคล */}
             <button
               onClick={() => {
@@ -906,12 +961,12 @@ export default function Home() {
                 setRegisterBackTo(null);
                 playSound('open');
               }}
-              aria-label="ลงทะเบียนผู้เล่น"
-              title="ลงทะเบียน/จัดการผู้เล่น — เหรียญและสกินเป็นของรายบุคคล"
+              aria-label={t('ลงทะเบียนผู้เล่น')}
+              title={t('ลงทะเบียน/จัดการผู้เล่น — เหรียญและสกินเป็นของรายบุคคล')}
               className="bg-amber-400/25 hover:bg-amber-400/40 border border-amber-300/40 text-white px-3 py-2 rounded-xl font-semibold transition text-sm flex items-center gap-1.5"
             >
               <i className="fa-solid fa-user-group"></i>
-              <span className="hidden sm:inline">ผู้เล่น</span>
+              <span className="hidden sm:inline">{t('ผู้เล่น')}</span>
               <span className="bg-white/20 rounded-md px-1.5 text-xs font-extrabold">
                 {mounted ? players.length : '–'}
               </span>
@@ -922,8 +977,8 @@ export default function Home() {
                 setRulesOpen(true);
                 playSound('open');
               }}
-              aria-label="กฎกติกาและวิธีได้เหรียญ"
-              title="กฎกติกาและวิธีได้เหรียญ — ชนะ +7 / ชนะขาด +10 / แพ้ +3"
+              aria-label={t('กฎกติกาและวิธีได้เหรียญ')}
+              title={t('กฎกติกาและวิธีได้เหรียญ — ชนะ +7 / ชนะขาด +10 / แพ้ +3')}
               className="bg-white/10 hover:bg-white/20 border border-white/25 text-white w-9 h-9 rounded-xl transition flex items-center justify-center text-sm"
             >
               <i className="fa-solid fa-circle-question"></i>
@@ -931,13 +986,13 @@ export default function Home() {
             {/* โหมดการแสดงผลของจอ: แนวตั้ง / แนวนอน */}
             <div
               role="group"
-              aria-label="โหมดการแสดงผลของจอ"
+              aria-label={t('โหมดการแสดงผลของจอ')}
               className="flex items-center rounded-xl overflow-hidden border border-white/25 bg-white/5"
             >
               <button
                 onClick={() => setDisplayMode('portrait')}
                 aria-pressed={disp === 'portrait'}
-                title="โหมดแนวตั้ง — เลย์เอาต์แคบแบบมือถือ"
+                title={t('โหมดแนวตั้ง — เลย์เอาต์แคบแบบมือถือ')}
                 className={`w-9 h-9 transition flex items-center justify-center text-sm cursor-pointer ${
                   disp === 'portrait' ? 'bg-white/30 text-white' : 'hover:bg-white/15 text-white/80'
                 }`}
@@ -947,7 +1002,7 @@ export default function Home() {
               <button
                 onClick={() => setDisplayMode('landscape')}
                 aria-pressed={disp === 'landscape'}
-                title="โหมดแนวนอน — เลย์เอาต์กว้าง 3 คอลัมน์"
+                title={t('โหมดแนวนอน — เลย์เอาต์กว้าง 3 คอลัมน์')}
                 className={`w-9 h-9 transition flex items-center justify-center text-sm cursor-pointer ${
                   disp === 'landscape' ? 'bg-white/30 text-white' : 'hover:bg-white/15 text-white/80'
                 }`}
@@ -958,8 +1013,8 @@ export default function Home() {
             {/* ปุ่มเปิด/ปิดเสียง */}
             <button
               onClick={toggleSound}
-              aria-label={soundMuted ? 'เปิดเสียงเอฟเฟกต์' : 'ปิดเสียงเอฟเฟกต์'}
-              title={soundMuted ? 'เปิดเสียงเอฟเฟกต์' : 'ปิดเสียงเอฟเฟกต์'}
+              aria-label={soundMuted ? t('เปิดเสียงเอฟเฟกต์') : t('ปิดเสียงเอฟเฟกต์')}
+              title={soundMuted ? t('เปิดเสียงเอฟเฟกต์') : t('ปิดเสียงเอฟเฟกต์')}
               className="bg-white/10 hover:bg-white/20 border border-white/25 text-white w-9 h-9 rounded-xl transition flex items-center justify-center text-sm"
             >
               <i className={`fa-solid ${soundMuted ? 'fa-volume-xmark' : 'fa-volume-high'}`}></i>
@@ -967,20 +1022,20 @@ export default function Home() {
             {/* ปุ่มสลับธีม light/dark */}
             <button
               onClick={toggleTheme}
-              aria-label={isDark ? 'สลับเป็นโหมดสว่าง' : 'สลับเป็นโหมดมืด'}
-              title={isDark ? 'โหมดสว่าง' : 'โหมดมืด'}
+              aria-label={isDark ? t('สลับเป็นโหมดสว่าง') : t('สลับเป็นโหมดมืด')}
+              title={isDark ? t('โหมดสว่าง') : t('โหมดมืด')}
               className="bg-white/10 hover:bg-white/20 border border-white/25 text-white w-9 h-9 rounded-xl transition flex items-center justify-center text-sm"
             >
               <i className={`fa-solid ${isDark ? 'fa-sun' : 'fa-moon'}`}></i>
             </button>
             <button
               onClick={requestClearData}
-              aria-label="ล้างข้อมูลสถิติทั้งหมด (ยืนยันก่อนลบ)"
-              title="ล้างข้อมูลสถิติทั้งหมด (ยืนยันก่อนลบ)"
+              aria-label={t('ล้างข้อมูลสถิติทั้งหมด (ยืนยันก่อนลบ)')}
+              title={t('ล้างข้อมูลสถิติทั้งหมด (ยืนยันก่อนลบ)')}
               className="bg-white/10 hover:bg-rose-500 border border-white/25 text-white px-3 py-2 rounded-xl font-semibold transition text-sm flex items-center gap-1.5"
             >
               <i className="fa-solid fa-trash-can"></i>
-              <span className="hidden sm:inline">ล้างข้อมูล</span>
+              <span className="hidden sm:inline">{t('ล้างข้อมูล')}</span>
             </button>
             <button
               onClick={() => {
@@ -990,7 +1045,7 @@ export default function Home() {
               className={`${hudSkin.btn} px-3 py-2 font-bold transition text-sm flex items-center gap-1.5`}
             >
               <i className="fa-solid fa-chart-pie"></i>
-              <span className="hidden sm:inline">สรุปภาพรวม</span>
+              <span className="hidden sm:inline">{t('สรุปภาพรวม')}</span>
             </button>
           </div>
         </div>
@@ -1013,10 +1068,12 @@ export default function Home() {
             </span>
             <div>
               <h2 className={`${hudSkin.heading} text-lg font-bold leading-tight`}>
-                บันทึกผลการแข่งขัน
+                {t('บันทึกผลการแข่งขัน')}
               </h2>
               <p className="text-xs text-gray-400">
-                เลือกชื่อผู้เล่นที่ลงทะเบียนไว้ (สกินตามโปรไฟล์) • กดช่องตัวละครเปิดตู้ Reel เปลี่ยนสกินอุปกรณ์ได้เลย
+                {t(
+                  'เลือกชื่อผู้เล่นที่ลงทะเบียนไว้ (สกินตามโปรไฟล์) • กดช่องตัวละครเปิดตู้ Reel เปลี่ยนสกินอุปกรณ์ได้เลย'
+                )}
               </p>
             </div>
           </div>
@@ -1041,7 +1098,8 @@ export default function Home() {
           <div className={`grid grid-cols-1 gap-4 mb-5 ${disp === 'landscape' ? 'sm:grid-cols-3' : ''}`}>
             <div>
               <label htmlFor="court" className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1.5">
-                <i className="fa-solid fa-location-dot text-gray-400 mr-1"></i>ชื่อสนาม
+                <i className="fa-solid fa-location-dot text-gray-400 mr-1"></i>
+                {t('ชื่อสนาม')}
               </label>
               <input
                 type="text"
@@ -1049,12 +1107,13 @@ export default function Home() {
                 value={court}
                 onChange={(e) => setCourt(e.target.value)}
                 className={inputBase}
-                placeholder="เช่น คอร์ท 1"
+                placeholder={t('เช่น คอร์ท 1')}
               />
             </div>
             <div>
               <label htmlFor="type" className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1.5">
-                <i className="fa-solid fa-user-group text-gray-400 mr-1"></i>ประเภทการตี
+                <i className="fa-solid fa-user-group text-gray-400 mr-1"></i>
+                {t('ประเภทการตี')}
               </label>
               <select
                 id="type"
@@ -1062,13 +1121,14 @@ export default function Home() {
                 onChange={(e) => changeType(e.target.value)}
                 className={`${inputBase} cursor-pointer`}
               >
-                <option value="เดี่ยว">เดี่ยว (Singles)</option>
-                <option value="คู่">คู่ (Doubles)</option>
+                <option value="เดี่ยว">{t('เดี่ยว (Singles)')}</option>
+                <option value="คู่">{t('คู่ (Doubles)')}</option>
               </select>
             </div>
             <div>
               <label htmlFor="matchDate" className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1.5">
-                <i className="fa-regular fa-calendar-days text-gray-400 mr-1"></i>วัน/เดือน/ปี
+                <i className="fa-regular fa-calendar-days text-gray-400 mr-1"></i>
+                {t('วัน/เดือน/ปี')}
               </label>
               <input
                 type="date"
@@ -1087,22 +1147,23 @@ export default function Home() {
                 <span className="w-6 h-6 rounded-full bg-blue-600 text-white text-xs font-extrabold flex items-center justify-center shadow">
                   A
                 </span>
-                <h3 className="font-bold text-blue-800 dark:text-blue-300">ทีม A</h3>
+                <h3 className="font-bold text-blue-800 dark:text-blue-300">{t('ทีม A')}</h3>
                 {serveTeam === 'A' && (
                   <span className="text-[10px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 rounded-full px-2 py-0.5 flex items-center gap-1">
-                    <i className="fa-solid fa-table-tennis-paddle-ball"></i>เสิร์ฟก่อน
+                    <ShuttlecockIcon className="w-3 h-3" />
+                    {t('เสิร์ฟก่อน')}
                   </span>
                 )}
                 {isDoublesType && (
                   <span className="text-[10px] font-bold bg-blue-600/10 text-blue-600 dark:text-blue-300 rounded-full px-2 py-0.5">
-                    เล่นคู่
+                    {t('เล่นคู่')}
                   </span>
                 )}
               </div>
               <div className="space-y-3">
                 <PlayerSlotField
                   id="playerA1"
-                  label="ผู้เล่น 1"
+                  label={t('ผู้เล่น 1')}
                   slot={slotA1}
                   profile={profA1}
                   players={players}
@@ -1116,7 +1177,7 @@ export default function Home() {
                 {isDoublesType && (
                   <PlayerSlotField
                     id="playerA2"
-                    label="ผู้เล่น 2"
+                    label={t('ผู้เล่น 2')}
                     slot={slotA2}
                     profile={profA2}
                     players={players}
@@ -1130,7 +1191,7 @@ export default function Home() {
                 )}
               </div>
               <label htmlFor="scoreA" className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1 mt-3">
-                แต้มที่ได้ (ห้ามเกิน {maxScore})
+                {t('แต้มที่ได้ (ห้ามเกิน {max})', { max: maxScore })}
               </label>
               <input
                 type="number"
@@ -1149,22 +1210,23 @@ export default function Home() {
                 <span className="w-6 h-6 rounded-full bg-rose-600 text-white text-xs font-extrabold flex items-center justify-center shadow">
                   B
                 </span>
-                <h3 className="font-bold text-rose-800 dark:text-rose-300">ทีม B</h3>
+                <h3 className="font-bold text-rose-800 dark:text-rose-300">{t('ทีม B')}</h3>
                 {serveTeam === 'B' && (
                   <span className="text-[10px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 rounded-full px-2 py-0.5 flex items-center gap-1">
-                    <i className="fa-solid fa-table-tennis-paddle-ball"></i>เสิร์ฟก่อน
+                    <ShuttlecockIcon className="w-3 h-3" />
+                    {t('เสิร์ฟก่อน')}
                   </span>
                 )}
                 {isDoublesType && (
                   <span className="text-[10px] font-bold bg-rose-600/10 text-rose-600 dark:text-rose-300 rounded-full px-2 py-0.5">
-                    เล่นคู่
+                    {t('เล่นคู่')}
                   </span>
                 )}
               </div>
               <div className="space-y-3">
                 <PlayerSlotField
                   id="playerB1"
-                  label="ผู้เล่น 1"
+                  label={t('ผู้เล่น 1')}
                   slot={slotB1}
                   profile={profB1}
                   players={players}
@@ -1178,7 +1240,7 @@ export default function Home() {
                 {isDoublesType && (
                   <PlayerSlotField
                     id="playerB2"
-                    label="ผู้เล่น 2"
+                    label={t('ผู้เล่น 2')}
                     slot={slotB2}
                     profile={profB2}
                     players={players}
@@ -1192,7 +1254,7 @@ export default function Home() {
                 )}
               </div>
               <label htmlFor="scoreB" className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1 mt-3">
-                แต้มที่ได้ (ห้ามเกิน {maxScore})
+                {t('แต้มที่ได้ (ห้ามเกิน {max})', { max: maxScore })}
               </label>
               <input
                 type="number"
@@ -1211,7 +1273,8 @@ export default function Home() {
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-4 border-t border-gray-100 dark:border-gray-800">
             <div className="flex items-center gap-2 text-sm">
               <label htmlFor="maxScore" className="font-medium text-gray-500 dark:text-gray-400">
-                <i className="fa-solid fa-flag text-gray-400 mr-1.5"></i>เกมละกี่แต้ม:
+                <i className="fa-solid fa-flag text-gray-400 mr-1.5"></i>
+                {t('เกมละกี่แต้ม:')}
               </label>
               <select
                 id="maxScore"
@@ -1219,15 +1282,15 @@ export default function Home() {
                 onChange={(e) => setMaxScore(e.target.value)}
                 className="border border-gray-200 bg-gray-50 rounded-lg px-2.5 py-1.5 text-sm font-semibold text-gray-800 outline-none cursor-pointer transition focus:ring-2 focus:ring-blue-400 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100"
               >
-                <option value="21">21 แต้ม</option>
-                <option value="15">15 แต้ม</option>
+                <option value="21">{t('21 แต้ม')}</option>
+                <option value="15">{t('15 แต้ม')}</option>
               </select>
             </div>
             <button
               onClick={saveMatch}
               className={`${hudSkin.btn} w-full sm:w-auto px-7 py-2.5 transition flex items-center justify-center gap-2 active:scale-[0.98]`}
             >
-              <i className="fa-solid fa-floppy-disk"></i> บันทึกผล
+              <i className="fa-solid fa-floppy-disk"></i> {t('บันทึกผล')}
             </button>
           </div>
 
@@ -1252,8 +1315,8 @@ export default function Home() {
                 <i className="fa-solid fa-dice text-xs"></i>
               </span>
               <div>
-                <h3 className={`${hudSkin.heading} text-sm font-bold leading-tight`}>ลูกเล่นหลังตีแบต</h3>
-                <p className="text-[11px] text-gray-400">คิดตังค่าสนาม • จระเข้กดนิ้ว • HI-LO • ดีโน่รัน</p>
+                <h3 className={`${hudSkin.heading} text-sm font-bold leading-tight`}>{t('ลูกเล่นหลังตีแบต')}</h3>
+                <p className="text-[11px] text-gray-400">{t('คิดตังค่าสนาม • จระเข้กดนิ้ว • HI-LO • ดีโน่รัน')}</p>
               </div>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -1263,11 +1326,11 @@ export default function Home() {
                   setFeeOpen(true);
                   playSound('open');
                 }}
-                title="คิดตังค่าสนาม — ใส่ราคารวมค่าคอร์ทและจำนวนคนที่จะหาร"
+                title={t('คิดตังค่าสนาม — ใส่ราคารวมค่าคอร์ทและจำนวนคนที่จะหาร')}
                 className={`${hudSkin.btn} px-1 py-2.5 flex flex-col items-center gap-1 text-[11px] font-bold leading-tight text-center transition active:scale-[0.97] cursor-pointer`}
               >
                 <span className="text-lg leading-none" aria-hidden="true">🧮</span>
-                คิดตังค่าสนาม
+                {t('คิดตังค่าสนาม')}
               </button>
               <button
                 type="button"
@@ -1275,11 +1338,11 @@ export default function Home() {
                   setCrocOpen(true);
                   playSound('open');
                 }}
-                title="มินิเกมจระเข้กดนิ้ว — ผลัดกันกดฟัน ซี่ไหนเจอฟันเสียจะโดนกัด"
+                title={t('มินิเกมจระเข้กดนิ้ว — ผลัดกันกดฟัน ซี่ไหนเจอฟันเสียจะโดนกัด')}
                 className={`${hudSkin.btn} px-1 py-2.5 flex flex-col items-center gap-1 text-[11px] font-bold leading-tight text-center transition active:scale-[0.97] cursor-pointer`}
               >
                 <span className="text-lg leading-none" aria-hidden="true">🐊</span>
-                จระเข้กดนิ้ว
+                {t('จระเข้กดนิ้ว')}
               </button>
               <button
                 type="button"
@@ -1287,7 +1350,7 @@ export default function Home() {
                   setHiloOpen(true);
                   playSound('open');
                 }}
-                title="มินิเกม HI-LO — ทายว่าไพ่ต่อไปสูงกว่าหรือต่ำกว่า"
+                title={t('มินิเกม HI-LO — ทายว่าไพ่ต่อไปสูงกว่าหรือต่ำกว่า')}
                 className={`${hudSkin.btn} px-1 py-2.5 flex flex-col items-center gap-1 text-[11px] font-bold leading-tight text-center transition active:scale-[0.97] cursor-pointer`}
               >
                 <span className="text-lg leading-none" aria-hidden="true">🃏</span>
@@ -1299,11 +1362,11 @@ export default function Home() {
                   setDinoOpen(true);
                   playSound('open');
                 }}
-                title="มินิเกมดีโน่รัน — กด SPACE หรือแตะจอเพื่อกระโดดหลบแคคตัส เก็บคะแนนสูงสุด"
+                title={t('มินิเกมดีโน่รัน — กด SPACE หรือแตะจอเพื่อกระโดดหลบแคคตัส เก็บคะแนนสูงสุด')}
                 className={`${hudSkin.btn} px-1 py-2.5 flex flex-col items-center gap-1 text-[11px] font-bold leading-tight text-center transition active:scale-[0.97] cursor-pointer`}
               >
                 <span className="text-lg leading-none" aria-hidden="true">🦖</span>
-                ดีโน่รัน
+                {t('ดีโน่รัน')}
               </button>
             </div>
           </div>
@@ -1316,18 +1379,18 @@ export default function Home() {
               <i className="fa-solid fa-trophy text-sm"></i>
             </span>
             <div>
-              <h2 className={`${hudSkin.heading} text-lg font-bold leading-tight`}>ตารางอันดับ</h2>
-              <p className="text-xs text-gray-400">จัดอันดับตาม Win Rate แบบเรียลไทม์</p>
+              <h2 className={`${hudSkin.heading} text-lg font-bold leading-tight`}>{t('ตารางอันดับ')}</h2>
+              <p className="text-xs text-gray-400">{t('จัดอันดับตาม Win Rate แบบเรียลไทม์')}</p>
             </div>
           </div>
 
           {rankedTeams.length === 0 ? (
             <div className="flex-1 flex flex-col items-center justify-center text-center py-12 border-2 border-dashed border-gray-200 rounded-2xl dark:border-gray-700">
-              <span className="text-4xl mb-3" role="img" aria-label="แบดมินตัน">
+              <span className="text-4xl mb-3" role="img" aria-label={t('แบดมินตัน')}>
                 🏸
               </span>
-              <p className="text-gray-400 text-sm font-semibold">ยังไม่มีข้อมูล</p>
-              <p className="text-gray-300 dark:text-gray-600 text-xs mt-1">เริ่มบันทึกผลการแข่งขันเลย!</p>
+              <p className="text-gray-400 text-sm font-semibold">{t('ยังไม่มีข้อมูล')}</p>
+              <p className="text-gray-300 dark:text-gray-600 text-xs mt-1">{t('เริ่มบันทึกผลการแข่งขันเลย!')}</p>
             </div>
           ) : (
             <ol className="space-y-2.5">
@@ -1350,7 +1413,7 @@ export default function Home() {
                       </span>
                     </div>
                     <div className="flex items-center justify-between text-xs text-gray-400 mt-0.5">
-                      <span>แข่ง {team.played} แมตช์</span>
+                      <span>{t('แข่ง {n} แมตช์', { n: team.played })}</span>
                       <span>
                         <span className="text-emerald-600 dark:text-emerald-400 font-bold">{team.win}W</span>
                         {' - '}
@@ -1387,9 +1450,9 @@ export default function Home() {
               </span>
               <div className="min-w-0">
                 <h2 className="text-xl font-extrabold text-gray-800 dark:text-gray-100 leading-tight truncate">
-                  สรุปภาพรวมทั้งหมด
+                  {t('สรุปภาพรวมทั้งหมด')}
                 </h2>
-                <p className="text-xs text-gray-400">สถิติทุกทีมและประวัติการแข่งขัน</p>
+                <p className="text-xs text-gray-400">{t('สถิติทุกทีมและประวัติการแข่งขัน')}</p>
               </div>
             </div>
             <div className="flex items-center gap-2 shrink-0">
@@ -1397,11 +1460,12 @@ export default function Home() {
                 onClick={downloadAsImage}
                 className={`${hudSkin.btn} px-4 py-2 font-semibold text-sm transition`}
               >
-                <i className="fa-solid fa-camera mr-1.5"></i>เซฟเป็นรูป
+                <i className="fa-solid fa-camera mr-1.5"></i>
+                {t('เซฟเป็นรูป')}
               </button>
               <button
                 onClick={() => setModalOpen(false)}
-                aria-label="ปิดหน้าต่าง"
+                aria-label={t('ปิดหน้าต่าง')}
                 className="w-9 h-9 rounded-xl text-gray-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/60 transition flex items-center justify-center"
               >
                 <i className="fa-solid fa-xmark text-lg"></i>
@@ -1421,14 +1485,15 @@ export default function Home() {
             {/* สถิติแต่ละทีม */}
             <section>
               <h3 className="text-base font-bold text-gray-700 dark:text-gray-200 mb-3 flex items-center gap-2">
-                <i className="fa-solid fa-users text-blue-500"></i>สถิติแต่ละทีม
-                <span className="text-xs font-medium text-gray-400 dark:text-gray-500">• วงกลม Win Rate</span>
+                <i className="fa-solid fa-users text-blue-500"></i>
+                {t('สถิติแต่ละทีม')}
+                <span className="text-xs font-medium text-gray-400 dark:text-gray-500">{t('• วงกลม Win Rate')}</span>
               </h3>
               <div id="teamStatsCards" className={`grid grid-cols-1 gap-4 ${disp === 'landscape' ? 'md:grid-cols-2 lg:grid-cols-3' : 'sm:grid-cols-2'}`}>
                 {summaryTeams.length === 0 ? (
                   <div className="col-span-full text-center py-10 text-gray-400 border-2 border-dashed border-gray-200 rounded-2xl dark:border-gray-700">
                     <i className="fa-solid fa-chart-simple text-2xl mb-2 block"></i>
-                    ยังไม่มีข้อมูลสถิติ
+                    {t('ยังไม่มีข้อมูลสถิติ')}
                   </div>
                 ) : (
                   summaryTeams.map((team) => (
@@ -1445,7 +1510,7 @@ export default function Home() {
                             <h4 className="font-extrabold text-gray-800 dark:text-gray-100 text-base leading-tight truncate">
                               {team.name}
                             </h4>
-                            <p className="text-xs text-gray-400 mt-0.5">แข่งทั้งหมด {team.played} แมตช์</p>
+                            <p className="text-xs text-gray-400 mt-0.5">{t('แข่งทั้งหมด {n} แมตช์', { n: team.played })}</p>
                           </div>
                         </div>
                         <div className="flex items-center gap-4">
@@ -1459,11 +1524,11 @@ export default function Home() {
                           </div>
                           <div className="flex-1 grid grid-cols-2 gap-2 text-center">
                             <div className="bg-emerald-50 ring-1 ring-emerald-100 text-emerald-700 rounded-xl py-2 dark:bg-emerald-950/60 dark:ring-emerald-900 dark:text-emerald-300">
-                              <div className="text-[11px]">ชนะ</div>
+                              <div className="text-[11px]">{t('ชนะ')}</div>
                               <div className="font-extrabold text-lg leading-tight">{team.win}</div>
                             </div>
                             <div className="bg-rose-50 ring-1 ring-rose-100 text-rose-600 rounded-xl py-2 dark:bg-rose-950/50 dark:ring-rose-900 dark:text-rose-300">
-                              <div className="text-[11px]">แพ้</div>
+                              <div className="text-[11px]">{t('แพ้')}</div>
                               <div className="font-extrabold text-lg leading-tight">{team.lose}</div>
                             </div>
                           </div>
@@ -1477,21 +1542,21 @@ export default function Home() {
             {/* ประวัติการแข่งขัน */}
             <section>
               <h3 className="text-base font-bold text-gray-700 dark:text-gray-200 mb-3 flex items-center gap-2">
-                <i className="fa-solid fa-clock-rotate-left text-blue-500"></i>ประวัติการแข่งขัน (Match
-                History)
+                <i className="fa-solid fa-clock-rotate-left text-blue-500"></i>
+                {t('ประวัติการแข่งขัน (Match History)')}
               </h3>
               <div className="overflow-x-auto ring-1 ring-gray-200 rounded-2xl dark:ring-gray-700">
                 <table className="w-full text-sm text-left">
                   <thead className="bg-gray-50 text-gray-500 text-xs font-semibold dark:bg-gray-800/80 dark:text-gray-400">
                     <tr>
-                      <th className="p-3">แมตช์</th>
-                      <th className="p-3">วันที่</th>
-                      <th className="p-3">สนาม</th>
-                      <th className="p-3">ประเภท</th>
-                      <th className="p-3 text-right">ทีม A</th>
-                      <th className="p-3 text-center">คะแนน</th>
-                      <th className="p-3 text-left">ทีม B</th>
-                      <th className="p-3 text-center">แต้มจบ</th>
+                      <th className="p-3">{t('แมตช์')}</th>
+                      <th className="p-3">{t('วันที่')}</th>
+                      <th className="p-3">{t('สนาม')}</th>
+                      <th className="p-3">{t('ประเภท')}</th>
+                      <th className="p-3 text-right">{t('ทีม A')}</th>
+                      <th className="p-3 text-center">{t('คะแนน')}</th>
+                      <th className="p-3 text-left">{t('ทีม B')}</th>
+                      <th className="p-3 text-center">{t('แต้มจบ')}</th>
                     </tr>
                   </thead>
                   <tbody id="historyBody" className="divide-y divide-gray-100 dark:divide-gray-800">
@@ -1499,7 +1564,7 @@ export default function Home() {
                       <tr>
                         <td colSpan={8} className="text-center py-10 text-gray-400">
                           <i className="fa-regular fa-folder-open text-2xl mb-2 block"></i>
-                          ยังไม่มีประวัติการแข่งขัน
+                          {t('ยังไม่มีประวัติการแข่งขัน')}
                         </td>
                       </tr>
                     ) : (
@@ -1519,13 +1584,13 @@ export default function Home() {
                             <td className="p-3 text-center">
                               <span className="inline-flex items-center gap-1.5 bg-blue-50 text-blue-700 ring-1 ring-blue-100 px-2 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap dark:bg-blue-950/70 dark:text-blue-300 dark:ring-blue-900">
                                 <i className="fa-regular fa-calendar-days text-[10px]"></i>
-                                {formatThaiDate(m.date)}
+                                {formatMatchDate(m.date, lang)}
                               </span>
                             </td>
                             <td className="p-3 dark:text-gray-200">{m.court}</td>
                             <td className="p-3">
                               <span className="inline-flex items-center rounded-full bg-gray-100 text-gray-600 px-2 py-0.5 text-xs font-medium dark:bg-gray-800 dark:text-gray-300">
-                                {m.type}
+                                {t(m.type)}
                               </span>
                             </td>
                             <td className={`p-3 text-right ${aClass}`}>
@@ -1543,7 +1608,7 @@ export default function Home() {
                                 {m.teamB}
                               </span>
                             </td>
-                            <td className="p-3 text-center text-xs text-gray-400">{m.maxScore} แต้ม</td>
+                            <td className="p-3 text-center text-xs text-gray-400">{t('{n} แต้ม', { n: m.maxScore })}</td>
                           </tr>
                         );
                       })
@@ -1560,7 +1625,7 @@ export default function Home() {
               onClick={() => setModalOpen(false)}
               className="bg-gray-600 hover:bg-gray-700 text-white px-5 py-2 rounded-xl font-semibold shadow transition"
             >
-              ปิดหน้าต่าง
+              {t('ปิดหน้าต่าง')}
             </button>
           </div>
         </div>
@@ -1582,7 +1647,11 @@ export default function Home() {
       <SkinReel
         key={`reel-${reelSlot ?? 'closed'}`}
         open={reelSlot !== null}
-        slotLabel={reelSlot ? `ทีม ${reelSlot[0]} • ผู้เล่น ${reelSlot[1]}` : ''}
+        slotLabel={
+          reelSlot
+            ? t('ทีม {team} • ผู้เล่น {no}', { team: reelSlot[0], no: reelSlot[1] })
+            : ''
+        }
         playerName={reelSlot ? slotStateMap[reelSlot].name : ''}
         skin={reelSlot ? getSkin(skinIdBySlot[reelSlot]) : undefined}
         currentRacketId={reelSlot ? gearIdBySlot[reelSlot].racketId : 'r1'}

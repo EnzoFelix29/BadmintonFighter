@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useId, useState } from 'react';
+import { useLang } from '@/lib/i18n';
 
 // อินโฟกราฟิกวงกลม Win Rate — วงแหวน SVG แบบ animate เติมรอบ
 // ใช้สีแบบ attribute/inline style ทั้งหมด เพื่อให้ html2canvas เซฟรูปได้ถูกต้อง
@@ -22,6 +23,7 @@ export function WinRateRing({
   text?: string;
 }) {
   const rawId = useId();
+  const { t } = useLang();
   const gid = `wr${rawId.replace(/[^a-zA-Z0-9]/g, '')}`;
   const radius = (100 - stroke) / 2;
   const circumference = 2 * Math.PI * radius;
@@ -43,7 +45,7 @@ export function WinRateRing({
       width={size}
       height={size}
       role="img"
-      aria-label={`อัตราชนะ ${label}%`}
+      aria-label={t('อัตราชนะ {pct}%', { pct: label })}
       style={{ display: 'block' }}
     >
       <defs>

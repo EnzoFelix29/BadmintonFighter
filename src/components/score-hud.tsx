@@ -1,12 +1,15 @@
 'use client';
 
 import { HUD_SKINS, type HudSkin } from '@/lib/hud-skins';
+import { useLang } from '@/lib/i18n';
 import { PixelCoinFace } from '@/components/pixel-coin';
 import { PixelFoodArt } from '@/components/pixel-food';
+import { ShuttlecockIcon } from '@/components/shuttlecock-icon';
 
 // ===== HUD สกอร์บอร์ดสด =====
 // มิเรอร์คะแนนที่กรอกในฟอร์มแบบเรียลไทม์ + ป้ายเกมละกี่แต้ม + ผลจับเหรียญเสิร์ฟก่อน
 // เปลี่ยนลุคได้ 11 สกิน — เลือกผ่านกล่องแตะ (tap box) ประหยัดพื้นที่แทนชิปเรียงแถว
+// ปุ่มสลับภาษา ไทย/อังกฤษ (TH/EN) ย้ายไปอยู่ navbar แถบบนสุดของหน้า (page.tsx)
 export function ScoreHud({
   skin,
   teamAName,
@@ -34,37 +37,45 @@ export function ScoreHud({
   onFoodRoll: () => void; // สุ่มเมนูอาหารหลังตีแบต (popup สล็อตกาชาปอง)
   onPickSkin: (id: string) => void;
 }) {
+  const { t } = useLang();
   const a = scoreA === '' ? '0' : scoreA;
   const b = scoreB === '' ? '0' : scoreB;
 
   return (
     <div className="mb-5">
-      {/* แถวหัว: ป้าย HUD + กล่องแตะเลือกสกิน (ประหยัดพื้นที่ ไม่วางชิปทุกแบบ) */}
+      {/* แถวหัว: ป้าย HUD + กล่องแตะเลือกสกิน (ประหยัดพื้นที่ ไม่วางชิปทุกแบบ) — ปุ่มภาษาย้ายขึ้น navbar บนสุดแล้ว */}
       <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
         <p className="flex items-center gap-2 text-xs font-semibold text-gray-500 dark:text-gray-400">
-          <i className="fa-solid fa-tv text-blue-500"></i>สกอร์บอร์ด HUD — อัปเดตสดตามที่กรอก
+          <i className="fa-solid fa-tv text-blue-500"></i>
+          {t('สกอร์บอร์ด HUD — อัปเดตสดตามที่กรอก')}
         </p>
-        <div role="group" aria-label="เลือกสกิน HUD" className="flex items-center gap-1.5">
-          <span className="text-[11px] font-medium text-gray-400">สกิน HUD:</span>
-          <div className="relative inline-flex">
-            <select
-              id="hud-skin-select"
-              value={skin.id}
-              onChange={(e) => onPickSkin(e.target.value)}
-              title={`สกิน ${skin.name} — ${skin.tag} (แตะเพื่อเลือกจากทั้งหมด ${HUD_SKINS.length} แบบ)`}
-              aria-label="เลือกสกิน HUD"
-              className={`appearance-none pl-2.5 pr-7 py-1 rounded-lg text-[11px] font-bold cursor-pointer outline-none focus:ring-2 focus:ring-blue-400 transition ${skin.chip}`}
-            >
-              {HUD_SKINS.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name} — {s.tag}
-                </option>
-              ))}
-            </select>
-            <i
-              aria-hidden="true"
-              className="fa-solid fa-chevron-down pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[9px] text-gray-500 opacity-70"
-            ></i>
+        <div className="flex flex-wrap items-center gap-1.5">
+          <div role="group" aria-label={t('เลือกสกิน HUD')} className="flex items-center gap-1.5">
+            <span className="text-[11px] font-medium text-gray-400">{t('สกิน HUD:')}</span>
+            <div className="relative inline-flex">
+              <select
+                id="hud-skin-select"
+                value={skin.id}
+                onChange={(e) => onPickSkin(e.target.value)}
+                title={t('สกิน {name} — {tag} (แตะเพื่อเลือกจากทั้งหมด {count} แบบ)', {
+                  name: t(skin.name),
+                  tag: t(skin.tag),
+                  count: HUD_SKINS.length,
+                })}
+                aria-label={t('เลือกสกิน HUD')}
+                className={`appearance-none pl-2.5 pr-7 py-1 rounded-lg text-[11px] font-bold cursor-pointer outline-none focus:ring-2 focus:ring-blue-400 transition ${skin.chip}`}
+              >
+                {HUD_SKINS.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {t(s.name)} — {t(s.tag)}
+                  </option>
+                ))}
+              </select>
+              <i
+                aria-hidden="true"
+                className="fa-solid fa-chevron-down pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[9px] text-gray-500 opacity-70"
+              ></i>
+            </div>
           </div>
         </div>
       </div>
@@ -75,7 +86,7 @@ export function ScoreHud({
           {/* ทีม A */}
           <div className="text-center sm:text-left min-w-0">
             <p className={`text-xs sm:text-sm font-extrabold truncate ${skin.nameA}`}>{teamAName}</p>
-            <p className="text-[10px] font-semibold text-gray-400">ทีม A</p>
+            <p className="text-[10px] font-semibold text-gray-400">{t('ทีม A')}</p>
           </div>
           {/* คะแนนสด */}
           <div className="flex items-center gap-2 sm:gap-3" aria-live="polite">
@@ -94,7 +105,7 @@ export function ScoreHud({
           {/* ทีม B */}
           <div className="text-center sm:text-right min-w-0">
             <p className={`text-xs sm:text-sm font-extrabold truncate ${skin.nameB}`}>{teamBName}</p>
-            <p className="text-[10px] font-semibold text-gray-400">ทีม B</p>
+            <p className="text-[10px] font-semibold text-gray-400">{t('ทีม B')}</p>
           </div>
         </div>
 
@@ -104,26 +115,39 @@ export function ScoreHud({
             <span
               className={`inline-flex items-center gap-1 text-[11px] font-bold rounded-full px-2.5 py-1 ${skin.sub}`}
             >
-              <i className="fa-solid fa-flag"></i>เกมละ {maxScore} แต้ม
+              <i className="fa-solid fa-flag"></i>
+              {t('เกมละ {max} แต้ม', { max: maxScore })}
             </span>
             <span
               className={`inline-flex items-center gap-1 text-[11px] font-bold rounded-full px-2.5 py-1 ${
                 serveTeam ? skin.serve : skin.sub
               }`}
             >
-              <i className="fa-solid fa-table-tennis-paddle-ball"></i>
+              <ShuttlecockIcon className="w-3 h-3" />
               {serveTeam
-                ? `ทีม ${serveTeam} เสิร์ฟก่อน${flipState === 'done' ? (serveTeam === 'A' ? ' (หัว)' : ' (ก้อย)') : ''}`
-                : 'ยังไม่ได้จับเหรียญเสิร์ฟ'}
+                ? t('ทีม {team} เสิร์ฟก่อน{face}', {
+                    team: serveTeam,
+                    face:
+                      flipState === 'done'
+                        ? t(serveTeam === 'A' ? ' (หัว)' : ' (ก้อย)')
+                        : '',
+                  })
+                : t('ยังไม่ได้จับเหรียญเสิร์ฟ')}
             </span>
           </div>
           {/* กลุ่มปุ่ม: จับเหรียญเสิร์ฟก่อน + สุ่มเมนูอาหาร อยู่ด้วยกันในกรอบเดียว */}
-          <div role="group" aria-label="ปุ่มจับเหรียญและสุ่มเมนูอาหาร" className="flex flex-wrap items-center gap-2">
+          <div
+            role="group"
+            aria-label={t('ปุ่มจับเหรียญและสุ่มเมนูอาหาร')}
+            className="flex flex-wrap items-center gap-2"
+          >
             <button
               type="button"
               onClick={onFlip}
               disabled={flipState === 'flipping'}
-              title="จับเหรียญเลือกทีมเสิร์ฟก่อน — popup เหรียญเด้งกลางจอ (หัว = ทีม A, ก้อย = ทีม B)"
+              title={t(
+                'จับเหรียญเลือกทีมเสิร์ฟก่อน — popup เหรียญเด้งกลางจอ (หัว = ทีม A, ก้อย = ทีม B)'
+              )}
               className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition active:scale-95 disabled:opacity-60 cursor-pointer ${skin.flipBtn}`}
             >
               <span
@@ -135,22 +159,24 @@ export function ScoreHud({
                 <PixelCoinFace letter={flipFace} className="h-full w-full" />
               </span>
               {flipState === 'flipping'
-                ? 'กำลังเหวี่ยง…'
+                ? t('กำลังเหวี่ยง…')
                 : flipState === 'done'
-                  ? 'เหวี่ยงใหม่'
-                  : 'จับเหรียญเสิร์ฟก่อน'}
+                  ? t('เหวี่ยงใหม่')
+                  : t('จับเหรียญเสิร์ฟก่อน')}
             </button>
             {/* ปุ่มสุ่มเมนูอาหารหลังตีแบต — สล็อตกาชาปอง 6 เมนูเด้งกลางจอ */}
             <button
               type="button"
               onClick={onFoodRoll}
-              title="สุ่มเมนูอาหารหลังตีแบต — สล็อต 6 เมนูตามโอกาส 45/15/15/10/10/5 (เด้งกลางจอ)"
+              title={t(
+                'สุ่มเมนูอาหารหลังตีแบต — สล็อต 6 เมนูตามโอกาส 45/15/15/10/10/5 (เด้งกลางจอ)'
+              )}
               className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition active:scale-95 cursor-pointer ${skin.flipBtn}`}
             >
               <span aria-hidden="true" className="w-7 h-7 flex items-center justify-center">
                 <PixelFoodArt menu="congee" className="h-full w-full" />
               </span>
-              สุ่มเมนูอาหาร
+              {t('สุ่มเมนูอาหาร')}
             </button>
           </div>
         </div>

@@ -1,5 +1,6 @@
 'use client';
 
+import { useLang } from '@/lib/i18n';
 import { useEffect, useRef, useState } from 'react';
 import type { HudSkin } from '@/lib/hud-skins';
 import {
@@ -46,6 +47,7 @@ export function CrocGameModal({
   sound: SoundFn;
   onClose: () => void;
 }) {
+  const { t } = useLang();
   const [playerCount, setPlayerCount] = useState(4); // จำนวนผู้เล่น
   const [turn, setTurn] = useState(0); // ตาของผู้เล่น index ปัจจุบัน
   const [sore, setSore] = useState(6); // ฟันเสีย (สุ่มใหม่ตอนเปิด popup)
@@ -158,10 +160,10 @@ export function CrocGameModal({
           disabled={isBitten || !started || isPressed}
           title={
             isPressed
-              ? `ฟันซี่ที่ ${i + 1} (กดแล้ว — ปลอดภัย)`
-              : `ฟันซี่ที่ ${i + 1} — กดเลย!`
+              ? t('ฟันซี่ที่ {n} (กดแล้ว — ปลอดภัย)', { n: i + 1 })
+              : t('ฟันซี่ที่ {n} — กดเลย!', { n: i + 1 })
           }
-          aria-label={`ฟันซี่ที่ ${i + 1}${isPressed ? ' (กดแล้ว)' : ''}`}
+          aria-label={t('ฟันซี่ที่ {n}', { n: i + 1 }) + (isPressed ? t(' (กดแล้ว)') : '')}
           className={`w-full h-full flex justify-center transition-transform cursor-pointer disabled:cursor-default ${
             row === 'top' ? 'items-start' : 'items-end'
           } ${!isPressed && !isBitten ? 'active:scale-95 hover:brightness-110' : ''}`}
@@ -195,7 +197,7 @@ export function CrocGameModal({
       className="fixed inset-0 bg-gray-900/70 backdrop-blur-sm z-50 flex justify-center items-center p-4"
       role="dialog"
       aria-modal="true"
-      aria-label="มินิเกมจระเข้กดนิ้ว"
+      aria-label={t('มินิเกมจระเข้กดนิ้ว')}
       onClick={isBitten ? onClose : undefined}
     >
       <div
@@ -206,12 +208,12 @@ export function CrocGameModal({
         <div className="flex justify-between items-center mb-1">
           <h2 className={`flex items-center gap-2 text-base font-extrabold ${skin.score}`}>
             <i className="fa-solid fa-teeth-open opacity-70"></i>
-            จระเข้กดนิ้ว
+            {t('จระเข้กดนิ้ว')}
           </h2>
           <button
             type="button"
             onClick={onClose}
-            aria-label="ปิดหน้าต่าง"
+            aria-label={t('ปิดหน้าต่าง')}
             className="w-8 h-8 rounded-lg text-gray-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/60 transition flex items-center justify-center cursor-pointer"
           >
             <i className="fa-solid fa-xmark"></i>
@@ -221,18 +223,18 @@ export function CrocGameModal({
           className={`text-[11px] font-semibold ${skin.sub} rounded-full px-2.5 py-1 inline-flex items-center gap-1`}
         >
           <i className="fa-solid fa-hand-pointer"></i>
-          ผลัดกันกดฟัน — ซี่ไหนเจอฟันเสียจะโดนกัด!
+          {t('ผลัดกันกดฟัน — ซี่ไหนเจอฟันเสียจะโดนกัด!')}
         </p>
 
         {/* เลือกจำนวนผู้เล่น */}
         <div className="flex items-center gap-1.5 mt-3 flex-wrap">
-          <span className={`text-[11px] font-bold ${skin.score}`}>ผู้เล่น:</span>
+          <span className={`text-[11px] font-bold ${skin.score}`}>{t('ผู้เล่น:')}</span>
           {PLAYER_CHOICES.map((n) => (
             <button
               key={n}
               type="button"
               onClick={() => changePlayerCount(n)}
-              title={`ตั้งผู้เล่น ${n} คน (เริ่มเกมใหม่)`}
+              title={t('ตั้งผู้เล่น {n} คน (เริ่มเกมใหม่)', { n })}
               className={`h-7 px-2.5 rounded-lg text-xs font-extrabold transition cursor-pointer ${
                 playerCount === n
                   ? 'bg-green-600 text-white shadow-sm'
@@ -247,13 +249,13 @@ export function CrocGameModal({
         {/* ป้ายตาผู้เล่น + จุดผลัด */}
         <div className="mt-3 flex items-center justify-between gap-2 flex-wrap">
           <p aria-live="polite" className={`text-sm font-extrabold ${skin.score}`}>
-            {isBitten ? '🐊 จระเข้กัด! ผู้เล่น ' : 'ตาของ: '}
+            {isBitten ? t('🐊 จระเข้กัด! ผู้เล่น ') : t('ตาของ: ')}
             {isBitten ? (
               <span className="text-rose-500">{(bitten ?? 0) + 1}</span>
             ) : (
               <span className="text-emerald-500">{turn + 1}</span>
             )}
-            {isBitten ? ' โดนกัดนิ้ว!' : ` (มี ${playerCount} คน)`}
+            {isBitten ? t(' โดนกัดนิ้ว!') : t(' (มี {n} คน)', { n: playerCount })}
           </p>
           <div className="flex items-center gap-1" aria-hidden="true">
             {Array.from({ length: playerCount }).map((_, i) => (
@@ -365,8 +367,15 @@ export function CrocGameModal({
           className={`text-center text-xs font-semibold ${skin.sub} rounded-full px-2.5 py-1 inline-flex mx-auto mt-3`}
         >
           {isBitten
-            ? `กดไป ${pressed.length}/${TEETH} ซี่ • กด "รอบใหม่" เล่นต่อได้เลย`
-            : `กดไปแล้ว ${pressed.length}/${TEETH} ซี่ — เหลืออีก ${remaining} ซี่ 🦷`}
+            ? t('กดไป {pressed}/{total} ซี่ • กด "รอบใหม่" เล่นต่อได้เลย', {
+                pressed: pressed.length,
+                total: TEETH,
+              })
+            : t('กดไปแล้ว {pressed}/{total} ซี่ — เหลืออีก {remaining} ซี่ 🦷', {
+                pressed: pressed.length,
+                total: TEETH,
+                remaining,
+              })}
         </p>
 
         {/* ปุ่มควบคุม */}
@@ -377,18 +386,18 @@ export function CrocGameModal({
               sound('select');
               newRound(true);
             }}
-            title="สุ่มฟันเสียซี่ใหม่ เริ่มรอบใหม่"
+            title={t('สุ่มฟันเสียซี่ใหม่ เริ่มรอบใหม่')}
             className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition active:scale-95 cursor-pointer ${skin.flipBtn}`}
           >
             <i className="fa-solid fa-rotate-right"></i>
-            รอบใหม่
+            {t('รอบใหม่')}
           </button>
           <button
             type="button"
             onClick={onClose}
             className="px-4 py-2 rounded-xl text-sm font-bold bg-gray-200 hover:bg-gray-300 text-gray-700 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-200 transition active:scale-95 cursor-pointer"
           >
-            ปิด
+            {t('ปิด')}
           </button>
         </div>
       </div>

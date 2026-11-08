@@ -1,6 +1,7 @@
 'use client';
 
 import type { HudSkin } from '@/lib/hud-skins';
+import { useLang } from '@/lib/i18n';
 import { PixelCoinFace } from '@/components/pixel-coin';
 
 // ============================================================
@@ -49,6 +50,7 @@ export function FlipCoinModal({
   onFlipAgain: () => void;
   onClose: () => void;
 }) {
+  const { t } = useLang();
   if (!open) return null;
 
   const flipping = state === 'flipping';
@@ -60,7 +62,7 @@ export function FlipCoinModal({
       className="fixed inset-0 bg-gray-900/70 backdrop-blur-sm z-50 flex justify-center items-center p-4"
       role="dialog"
       aria-modal="true"
-      aria-label="จับเหรียญเสิร์ฟก่อน"
+      aria-label={t('จับเหรียญเสิร์ฟก่อน')}
       onClick={flipping ? undefined : onClose}
     >
       <div
@@ -70,19 +72,21 @@ export function FlipCoinModal({
         {/* หัว popup */}
         <div className="flex justify-between items-center mb-1">
           <h2 className={`flex items-center gap-2 text-base font-extrabold ${skin.score}`}>
-            <i className="fa-solid fa-coins opacity-70"></i>จับเหรียญเสิร์ฟก่อน
+            <i className="fa-solid fa-coins opacity-70"></i>
+            {t('จับเหรียญเสิร์ฟก่อน')}
           </h2>
           <button
             type="button"
             onClick={onClose}
-            aria-label="ปิดหน้าต่าง"
+            aria-label={t('ปิดหน้าต่าง')}
             className="w-8 h-8 rounded-lg text-gray-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/60 transition flex items-center justify-center cursor-pointer"
           >
             <i className="fa-solid fa-xmark"></i>
           </button>
         </div>
         <p className={`text-[11px] font-semibold ${skin.sub} rounded-full px-2.5 py-1 inline-flex items-center gap-1`}>
-          <i className="fa-solid fa-circle-half-stroke"></i>หัว = ทีม A • ก้อย = ทีม B
+          <i className="fa-solid fa-circle-half-stroke"></i>
+          {t('หัว = ทีม A • ก้อย = ทีม B')}
         </p>
 
         {/* เหรียญพิกเซล 8-บิต มุม isometric — เด้งกลางจอพร้อมหมุนรอบแกนตั้ง (หนา 16px) */}
@@ -136,11 +140,14 @@ export function FlipCoinModal({
           {/* ข้อความผล */}
           <p aria-live="polite" className={`mt-4 text-center text-lg font-extrabold ${skin.score}`}>
             {flipping
-              ? 'กำลังเหวี่ยงเหรียญ…'
-              : `${face === 'A' ? 'หัว' : 'ก้อย'}! ${serveName} เสิร์ฟก่อน`}
+              ? t('กำลังเหวี่ยงเหรียญ…')
+              : t('{side}! {name} เสิร์ฟก่อน', {
+                  side: t(face === 'A' ? 'หัว' : 'ก้อย'),
+                  name: serveName,
+                })}
           </p>
           <p className="mt-1 text-xs text-gray-400 text-center">
-            {flipping ? 'รอเหรียญตกลงพื้นก่อนนะ…' : 'ทีมที่ชนะเหรียญได้เสิร์ฟลูกก่อน 🏸'}
+            {flipping ? t('รอเหรียญตกลงพื้นก่อนนะ…') : t('ทีมที่ชนะเหรียญได้เสิร์ฟลูกก่อน 🏸')}
           </p>
         </div>
 
@@ -150,18 +157,18 @@ export function FlipCoinModal({
             type="button"
             onClick={onFlipAgain}
             disabled={flipping}
-            title="เหวี่ยงเหรียญใหม่"
+            title={t('เหวี่ยงเหรียญใหม่')}
             className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition active:scale-95 disabled:opacity-60 cursor-pointer ${skin.flipBtn}`}
           >
             <i className="fa-solid fa-rotate-right"></i>
-            {flipping ? 'กำลังเหวี่ยง…' : 'เหวี่ยงใหม่'}
+            {flipping ? t('กำลังเหวี่ยง…') : t('เหวี่ยงใหม่')}
           </button>
           <button
             type="button"
             onClick={onClose}
             className="px-4 py-2 rounded-xl text-sm font-bold bg-gray-200 hover:bg-gray-300 text-gray-700 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-200 transition active:scale-95 cursor-pointer"
           >
-            ปิด
+            {t('ปิด')}
           </button>
         </div>
       </div>

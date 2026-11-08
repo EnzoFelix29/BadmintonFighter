@@ -1,5 +1,6 @@
 'use client';
 
+import { useLang } from '@/lib/i18n';
 import { useMemo, useState } from 'react';
 import type { HudSkin } from '@/lib/hud-skins';
 
@@ -26,6 +27,7 @@ export function CourtFeeModal({
   skin: HudSkin;
   onClose: () => void;
 }) {
+  const { t } = useLang();
   const [total, setTotal] = useState('');
   const [people, setPeople] = useState('');
 
@@ -47,7 +49,7 @@ export function CourtFeeModal({
       className="fixed inset-0 bg-gray-900/70 backdrop-blur-sm z-50 flex justify-center items-center p-4"
       role="dialog"
       aria-modal="true"
-      aria-label="คิดตังค่าสนาม"
+      aria-label={t('คิดตังค่าสนาม')}
       onClick={onClose}
     >
       <div
@@ -58,12 +60,12 @@ export function CourtFeeModal({
         <div className="flex justify-between items-center mb-1">
           <h2 className={`flex items-center gap-2 text-base font-extrabold ${skin.score}`}>
             <i className="fa-solid fa-calculator opacity-70"></i>
-            คิดตังค่าสนาม
+            {t('คิดตังค่าสนาม')}
           </h2>
           <button
             type="button"
             onClick={onClose}
-            aria-label="ปิดหน้าต่าง"
+            aria-label={t('ปิดหน้าต่าง')}
             className="w-8 h-8 rounded-lg text-gray-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/60 transition flex items-center justify-center cursor-pointer"
           >
             <i className="fa-solid fa-xmark"></i>
@@ -71,14 +73,14 @@ export function CourtFeeModal({
         </div>
         <p className={`text-[11px] font-semibold ${skin.sub} rounded-full px-2.5 py-1 inline-flex items-center gap-1`}>
           <i className="fa-solid fa-coins"></i>
-          ใส่ราคารวมค่าคอร์ท + จำนวนคนที่จะหาร
+          {t('ใส่ราคารวมค่าคอร์ท + จำนวนคนที่จะหาร')}
         </p>
 
         {/* ช่องกรอก: ราคารวม + จำนวนคน */}
         <div className="grid grid-cols-2 gap-3 mt-4">
           <div>
             <label htmlFor="feeTotal" className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">
-              ราคารวมค่าคอร์ท (บาท)
+              {t('ราคารวมค่าคอร์ท (บาท)')}
             </label>
             <input
               type="number"
@@ -87,13 +89,13 @@ export function CourtFeeModal({
               min={0}
               value={total}
               onChange={(e) => setTotal(e.target.value)}
-              placeholder="เช่น 800"
+              placeholder={t('เช่น 800')}
               className={INPUT_CLS}
             />
           </div>
           <div>
             <label htmlFor="feePeople" className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">
-              จำนวนคนที่จะหาร (คน)
+              {t('จำนวนคนที่จะหาร (คน)')}
             </label>
             <input
               type="number"
@@ -103,7 +105,7 @@ export function CourtFeeModal({
               max={99}
               value={people}
               onChange={(e) => setPeople(e.target.value)}
-              placeholder="เช่น 4"
+              placeholder={t('เช่น 4')}
               className={INPUT_CLS}
             />
           </div>
@@ -111,13 +113,13 @@ export function CourtFeeModal({
 
         {/* ปุ่มด่วนจำนวนคน */}
         <div className="flex items-center gap-1.5 mt-2.5 flex-wrap">
-          <span className="text-[11px] font-semibold text-gray-400 mr-0.5">ด่วน:</span>
+          <span className="text-[11px] font-semibold text-gray-400 mr-0.5">{t('ด่วน:')}</span>
           {PEOPLE_CHIPS.map((n) => (
             <button
               key={n}
               type="button"
               onClick={() => setPeople(String(n))}
-              title={`ตั้งจำนวนคน ${n} คน`}
+              title={t('ตั้งจำนวนคน {n} คน', { n })}
               className={`w-8 h-7 rounded-lg text-xs font-extrabold transition cursor-pointer ${
                 people === String(n)
                   ? 'bg-blue-600 text-white shadow-sm'
@@ -136,25 +138,25 @@ export function CourtFeeModal({
         >
           {calc ? (
             <>
-              <p className="text-xs font-bold text-emerald-600 dark:text-emerald-300">หารกันคนละ</p>
+              <p className="text-xs font-bold text-emerald-600 dark:text-emerald-300">{t('หารกันคนละ')}</p>
               <p className="text-3xl font-black text-emerald-600 dark:text-emerald-300 leading-tight mt-0.5 tabular-nums">
                 {fmt(calc.exact)}{' '}
-                <span className="text-base font-extrabold">บาท</span>
+                <span className="text-base font-extrabold">{t('บาท')}</span>
               </p>
               {calc.tip > 0 ? (
                 <p className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 mt-1.5">
-                  ปัดเศษขึ้น <b className="text-emerald-600 dark:text-emerald-300">คนละ {fmt(calc.up)} บาท</b>{' '}
-                  (รวมเกิน {fmt(calc.tip)} บาท)
+                  {t('ปัดเศษขึ้น')} <b className="text-emerald-600 dark:text-emerald-300">{t('คนละ {up} บาท', { up: fmt(calc.up) })}</b>{' '}
+                  {t('(รวมเกิน {tip} บาท)', { tip: fmt(calc.tip) })}
                 </p>
               ) : (
                 <p className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 mt-1.5">
-                  ลงตัวพอดี ไม่ต้องปัดเศษ 👌
+                  {t('ลงตัวพอดี ไม่ต้องปัดเศษ 👌')}
                 </p>
               )}
             </>
           ) : (
             <p className="text-sm font-semibold text-gray-400">
-              กรอกราคารวมและจำนวนคนเพื่อคำนวณ
+              {t('กรอกราคารวมและจำนวนคนเพื่อคำนวณ')}
             </p>
           )}
         </div>
@@ -167,17 +169,17 @@ export function CourtFeeModal({
               setTotal('');
               setPeople('');
             }}
-            title="ล้างตัวเลขที่กรอก"
+            title={t('ล้างตัวเลขที่กรอก')}
             className="px-4 py-2 rounded-xl text-sm font-bold bg-gray-200 hover:bg-gray-300 text-gray-700 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-200 transition active:scale-95 cursor-pointer"
           >
-            <i className="fa-solid fa-eraser mr-1"></i>ล้าง
+            <i className="fa-solid fa-eraser mr-1"></i>{t('ล้าง')}
           </button>
           <button
             type="button"
             onClick={onClose}
             className={`inline-flex items-center gap-2 px-5 py-2 text-sm font-bold transition active:scale-95 cursor-pointer ${skin.flipBtn}`}
           >
-            เสร็จแล้ว
+            {t('เสร็จแล้ว')}
           </button>
         </div>
       </div>

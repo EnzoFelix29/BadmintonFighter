@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import type { PlayerProfile } from '@/lib/players';
+import { useLang } from '@/lib/i18n';
 import type { HudSkin } from '@/lib/hud-skins';
 import { getSkin } from '@/lib/characters';
 import { getGear } from '@/lib/gear';
@@ -31,6 +32,7 @@ export function RegisterModal({
   const [name, setName] = useState('');
   const [error, setError] = useState('');
   const [okMsg, setOkMsg] = useState('');
+  const { t } = useLang();
 
   if (!open) return null;
 
@@ -39,7 +41,9 @@ export function RegisterModal({
     setOkMsg('');
     const err = onRegister(name);
     if (err) return setError(err);
-    setOkMsg(`ลงทะเบียน "${name.trim()}" เรียบร้อย — ครั้งต่อไปเลือกชื่อนี้ในช่องผู้เล่นได้เลย`);
+    setOkMsg(
+      t('ลงทะเบียน "{name}" เรียบร้อย — ครั้งต่อไปเลือกชื่อนี้ในช่องผู้เล่นได้เลย', { name: name.trim() })
+    );
     setName('');
   }
 
@@ -48,7 +52,7 @@ export function RegisterModal({
       className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-50 flex justify-center items-center p-4"
       role="dialog"
       aria-modal="true"
-      aria-label="ลงทะเบียนผู้เล่น"
+      aria-label={t('ลงทะเบียนผู้เล่น')}
       onClick={onClose}
     >
       <div
@@ -63,16 +67,16 @@ export function RegisterModal({
             </span>
             <div className="min-w-0">
               <h2 className="text-lg font-extrabold text-gray-800 dark:text-gray-100 leading-tight">
-                ลงทะเบียนผู้เล่น
+                {t('ลงทะเบียนผู้เล่น')}
               </h2>
               <p className="text-xs text-gray-400">
-                กรอกชื่อแล้วใช้ได้เลย • เหรียญและสกินเป็นของรายบุคคล
+                {t('กรอกชื่อแล้วใช้ได้เลย • เหรียญและสกินเป็นของรายบุคคล')}
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            aria-label="ปิดหน้าลงทะเบียนผู้เล่น"
+            aria-label={t('ปิดหน้าลงทะเบียนผู้เล่น')}
             className="w-9 h-9 rounded-xl text-gray-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/60 transition flex items-center justify-center shrink-0"
           >
             <i className="fa-solid fa-xmark text-lg"></i>
@@ -84,7 +88,8 @@ export function RegisterModal({
           {/* ฟอร์มลงทะเบียนใหม่ */}
           <section>
             <h3 className="text-sm font-bold text-gray-700 dark:text-gray-200 mb-3 flex items-center gap-2">
-              <i className="fa-solid fa-id-card text-emerald-500"></i>ลงทะเบียนผู้เล่นใหม่
+              <i className="fa-solid fa-id-card text-emerald-500"></i>
+              {t('ลงทะเบียนผู้เล่นใหม่')}
             </h3>
             <form
               onSubmit={(e) => {
@@ -97,8 +102,8 @@ export function RegisterModal({
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="ชื่อผู้เล่น"
-                aria-label="ชื่อผู้เล่นที่จะลงทะเบียน"
+                placeholder={t('ชื่อผู้เล่น')}
+                aria-label={t('ชื่อผู้เล่นที่จะลงทะเบียน')}
                 maxLength={24}
                 className="bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-sm font-semibold text-gray-800 outline-none transition focus:bg-white focus:ring-2 focus:ring-emerald-500/60 focus:border-emerald-400 dark:bg-gray-800/70 dark:border-gray-700 dark:text-gray-100"
               />
@@ -106,13 +111,14 @@ export function RegisterModal({
                 type="submit"
                 className="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white px-5 py-2.5 rounded-xl font-bold shadow-lg shadow-emerald-500/25 transition flex items-center justify-center gap-2 active:scale-[0.98] text-sm"
               >
-                <i className="fa-solid fa-user-plus"></i>ลงทะเบียน
+                <i className="fa-solid fa-user-plus"></i>
+                {t('ลงทะเบียน')}
               </button>
             </form>
             {error && (
               <p className="mt-2.5 text-xs font-semibold text-rose-600 dark:text-rose-400 flex items-center gap-1.5">
                 <i className="fa-solid fa-circle-exclamation"></i>
-                {error}
+                {t(error)}
               </p>
             )}
             {okMsg && (
@@ -126,13 +132,14 @@ export function RegisterModal({
           {/* รายชื่อผู้เล่น */}
           <section>
             <h3 className="text-sm font-bold text-gray-700 dark:text-gray-200 mb-3 flex items-center gap-2">
-              <i className="fa-solid fa-users text-blue-500"></i>ผู้เล่นที่ลงทะเบียนแล้ว
-              <span className="text-xs font-medium text-gray-400">({players.length} คน)</span>
+              <i className="fa-solid fa-users text-blue-500"></i>
+              {t('ผู้เล่นที่ลงทะเบียนแล้ว')}
+              <span className="text-xs font-medium text-gray-400">{t('({n} คน)', { n: players.length })}</span>
             </h3>
             {players.length === 0 ? (
               <div className="text-center py-8 border-2 border-dashed border-gray-200 rounded-2xl text-gray-400 text-sm dark:border-gray-700">
                 <i className="fa-regular fa-id-card text-2xl mb-2 block"></i>
-                ยังไม่มีผู้เล่น — ลงทะเบียนด้านบนเพื่อเริ่มเก็บเหรียญรายบุคคล
+                {t('ยังไม่มีผู้เล่น — ลงทะเบียนด้านบนเพื่อเริ่มเก็บเหรียญรายบุคคล')}
               </div>
             ) : (
               <ul className="space-y-2.5">
@@ -164,23 +171,23 @@ export function RegisterModal({
                         </p>
                         <p className="text-xs text-amber-600 dark:text-amber-400 font-bold flex items-center gap-1 mt-0.5">
                           <i className="fa-solid fa-coins text-[10px]"></i>
-                          {p.coins} เหรียญ
+                          {t('{n} เหรียญ', { n: p.coins })}
                         </p>
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">
                         <button
                           type="button"
                           onClick={() => onPlayerAction(p.name, 'shop')}
-                          title={`ร้านค้าสกินของ ${p.name}`}
+                          title={t('ร้านค้าสกินของ {name}', { name: p.name })}
                           className="bg-amber-100 hover:bg-amber-200 text-amber-700 dark:bg-amber-950/70 dark:text-amber-300 dark:hover:bg-amber-900/70 px-2.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1"
                         >
                           <i className="fa-solid fa-bag-shopping"></i>
-                          <span className="hidden sm:inline">ร้านค้า</span>
+                          <span className="hidden sm:inline">{t('ร้านค้า')}</span>
                         </button>
                         <button
                           type="button"
                           onClick={() => onPlayerAction(p.name, 'delete')}
-                          title={`ลบผู้เล่น ${p.name}`}
+                          title={t('ลบผู้เล่น {name}', { name: p.name })}
                           className="bg-rose-100 hover:bg-rose-200 text-rose-600 dark:bg-rose-950/60 dark:text-rose-300 dark:hover:bg-rose-900/60 w-8 h-8 rounded-lg text-xs font-bold transition flex items-center justify-center"
                         >
                           <i className="fa-solid fa-trash-can"></i>
@@ -198,13 +205,15 @@ export function RegisterModal({
         <div className="px-5 py-3.5 border-t border-gray-100 bg-gray-50 dark:border-gray-800 dark:bg-gray-800/60 flex items-center justify-between gap-3">
           <p className="text-[11px] text-gray-400 hidden sm:block">
             <i className="fa-solid fa-circle-info mr-1"></i>
-            ทุกคนมีเหรียญและสกินของตัวเอง — กดร้านค้าเพื่อปลดล็อคสกินใหม่ (100 เหรียญ/สกิน)
+            {t(
+              'ทุกคนมีเหรียญและสกินของตัวเอง — กดร้านค้าเพื่อปลดล็อคสกินใหม่ (100 เหรียญ/สกิน)'
+            )}
           </p>
           <button
             onClick={onClose}
             className="ml-auto bg-gray-600 hover:bg-gray-700 text-white px-5 py-2 rounded-xl font-semibold shadow transition text-sm"
           >
-            ปิดหน้าต่าง
+            {t('ปิดหน้าต่าง')}
           </button>
         </div>
       </div>
