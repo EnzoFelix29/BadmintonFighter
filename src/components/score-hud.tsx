@@ -46,7 +46,7 @@ export function ScoreHud({
       {/* แถวหัว: ป้าย HUD + กล่องแตะเลือกสกิน (ประหยัดพื้นที่ ไม่วางชิปทุกแบบ) — ปุ่มภาษาย้ายขึ้น navbar บนสุดแล้ว */}
       <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
         <p className="flex items-center gap-2 text-xs font-semibold text-gray-500 dark:text-gray-400">
-          <i className="fa-solid fa-tv text-blue-500"></i>
+          <i className="fa-solid fa-tv text-gray-500 dark:text-gray-400"></i>
           {t('สกอร์บอร์ด HUD — อัปเดตสดตามที่กรอก')}
         </p>
         <div className="flex flex-wrap items-center gap-1.5">
@@ -63,7 +63,7 @@ export function ScoreHud({
                   count: HUD_SKINS.length,
                 })}
                 aria-label={t('เลือกสกิน HUD')}
-                className={`appearance-none pl-2.5 pr-7 py-1 rounded-lg text-[11px] font-bold cursor-pointer outline-none focus:ring-2 focus:ring-blue-400 transition ${skin.chip}`}
+                className={`appearance-none pl-2.5 pr-7 py-1 rounded-lg text-xs font-medium cursor-pointer outline-none focus:ring-2 focus:ring-[#6a8b70] transition-colors ${skin.chip}`}
               >
                 {HUD_SKINS.map((s) => (
                   <option key={s.id} value={s.id}>
@@ -85,27 +85,27 @@ export function ScoreHud({
         <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 sm:gap-4">
           {/* ทีม A */}
           <div className="text-center sm:text-left min-w-0">
-            <p className={`text-xs sm:text-sm font-extrabold truncate ${skin.nameA}`}>{teamAName}</p>
-            <p className="text-[10px] font-semibold text-gray-400">{t('ทีม A')}</p>
+            <p className={`text-xs sm:text-sm font-semibold truncate ${skin.nameA}`}>{teamAName}</p>
+            <p className="text-xs font-medium text-gray-500 dark:text-gray-400">{t('ทีม A')}</p>
           </div>
           {/* คะแนนสด */}
           <div className="flex items-center gap-2 sm:gap-3" aria-live="polite">
             <span
-              className={`text-3xl sm:text-4xl font-black tabular-nums leading-none ${skin.score} ${skin.scoreA ?? ''}`}
+              className={`text-3xl sm:text-4xl font-semibold tabular-nums leading-none ${skin.score} ${skin.scoreA ?? ''}`}
             >
               {a}
             </span>
-            <span className={`text-2xl font-black ${skin.colon}`}>:</span>
+            <span className={`text-2xl font-medium ${skin.colon}`}>:</span>
             <span
-              className={`text-3xl sm:text-4xl font-black tabular-nums leading-none ${skin.score} ${skin.scoreB ?? ''}`}
+              className={`text-3xl sm:text-4xl font-semibold tabular-nums leading-none ${skin.score} ${skin.scoreB ?? ''}`}
             >
               {b}
             </span>
           </div>
           {/* ทีม B */}
           <div className="text-center sm:text-right min-w-0">
-            <p className={`text-xs sm:text-sm font-extrabold truncate ${skin.nameB}`}>{teamBName}</p>
-            <p className="text-[10px] font-semibold text-gray-400">{t('ทีม B')}</p>
+            <p className={`text-xs sm:text-sm font-semibold truncate ${skin.nameB}`}>{teamBName}</p>
+            <p className="text-xs font-medium text-gray-500 dark:text-gray-400">{t('ทีม B')}</p>
           </div>
         </div>
 
@@ -113,13 +113,13 @@ export function ScoreHud({
         <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
           <div className="flex flex-wrap items-center gap-1.5">
             <span
-              className={`inline-flex items-center gap-1 text-[11px] font-bold rounded-full px-2.5 py-1 ${skin.sub}`}
+              className={`inline-flex items-center gap-1 text-xs font-medium rounded-md px-2.5 py-1 ${skin.sub}`}
             >
               <i className="fa-solid fa-flag"></i>
               {t('เกมละ {max} แต้ม', { max: maxScore })}
             </span>
             <span
-              className={`inline-flex items-center gap-1 text-[11px] font-bold rounded-full px-2.5 py-1 ${
+              className={`inline-flex items-center gap-1 text-xs font-medium rounded-md px-2.5 py-1 ${
                 serveTeam ? skin.serve : skin.sub
               }`}
             >

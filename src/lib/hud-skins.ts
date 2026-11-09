@@ -19,7 +19,7 @@ export interface HudSkin {
   serve: string; // ป้าย "เสิร์ฟก่อน"
   flipBtn: string; // ปุ่มเหวี่ยงเหรียญ
   coin: string; // หน้าเหรียญ
-  // ===== ธีมทั้งหน้าจอ (สกินมีผลทั้งเว็บ ไม่ใช่แค่ HUD/เหรียญ) =====
+  // ===== โทนพื้นฐานของหน้า; getHudSkin จำกัดโทนหลักให้อยู่ในสกอร์บอร์ด =====
   page: string; // พื้นหลังทั้งเว็บ + สีตัวอักษรฐาน
   nav: string; // แถบเมนูด้านบน
   panel: string; // การ์ด/กล่องหลัก (ฟอร์มบันทึกผล + ตารางอันดับ)
@@ -35,19 +35,18 @@ export const HUD_SKINS: HudSkin[] = [
   {
     id: 'classic',
     name: 'คลาสสิก',
-    tag: 'ฟ้า-ขาว สไตล์แอป',
+    tag: 'โทนสนามและใบบันทึกคะแนน',
     chip:
-      'bg-gradient-to-r from-blue-100 to-rose-100 border border-blue-300 text-blue-900 dark:from-blue-900 dark:to-rose-900 dark:text-blue-200',
+      'bg-[#e8eee8] border border-[#cad8cb] text-[#355c3e] dark:bg-[#28342b] dark:border-[#425943] dark:text-[#c3d8c4]',
     card:
-      'bg-gradient-to-r from-blue-50 via-white to-rose-50 border border-blue-200 rounded-2xl shadow-sm dark:from-blue-950/60 dark:via-gray-900 dark:to-rose-950/50 dark:border-gray-700',
-    nameA: 'text-blue-800 dark:text-blue-300',
-    nameB: 'text-rose-800 dark:text-rose-300',
+      'bg-[#f6f8f5] border border-[#d9e2d9] rounded-xl dark:bg-[#202722] dark:border-[#3b4b3d]',
+    nameA: 'text-[#355c3e] dark:text-[#a9c6ac]',
+    nameB: 'text-[#343a35] dark:text-[#d0d4cf]',
     score: 'text-gray-800 dark:text-gray-100',
     colon: 'text-gray-300 dark:text-gray-600',
-    sub: 'bg-white/80 ring-1 ring-gray-200 text-gray-500 dark:bg-gray-800 dark:ring-gray-700 dark:text-gray-300',
-    serve: 'bg-emerald-50 ring-1 ring-emerald-200 text-emerald-600 dark:bg-emerald-950/60 dark:ring-emerald-800 dark:text-emerald-300',
-    flipBtn:
-      'bg-gradient-to-r from-blue-600 to-sky-500 hover:from-blue-700 hover:to-sky-600 text-white',
+    sub: 'bg-white border border-gray-200 text-gray-600 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300',
+    serve: 'bg-[#e8eee8] border border-[#cbd9cc] text-[#355c3e] dark:bg-[#28342b] dark:border-[#425943] dark:text-[#c3d8c4]',
+    flipBtn: 'bg-[#426b49] hover:bg-[#355c3e] text-white',
     coin: 'bg-gradient-to-br from-amber-300 to-yellow-500 text-white ring-2 ring-amber-200/70',
     page:
       'bg-gradient-to-br from-slate-100 via-gray-50 to-blue-50 text-gray-800 dark:from-slate-950 dark:via-gray-950 dark:to-blue-950 dark:text-gray-100',
@@ -317,5 +316,18 @@ export const HUD_SKINS: HudSkin[] = [
 
 // หาสกินจาก id (ถ้าไม่เจอคืนสกินแรก)
 export function getHudSkin(id: string | null | undefined): HudSkin {
-  return HUD_SKINS.find((s) => s.id === id) ?? HUD_SKINS[0];
+  const skin = HUD_SKINS.find((s) => s.id === id) ?? HUD_SKINS[0];
+
+  // จำกัดสกินสีไว้ที่สกอร์บอร์ด ส่วนหน้าบันทึกผลใช้พื้นผิวโทนสนามที่อ่านง่ายร่วมกัน
+  return {
+    ...skin,
+    card: 'bg-[#f6f8f5] border border-[#d9e2d9] rounded-xl dark:bg-[#202722] dark:border-[#3b4b3d]',
+    page: 'bg-[#f2f4f0] text-[#20251f] dark:bg-[#141715] dark:text-[#ecefe9]',
+    nav: 'bg-[#202923] text-white border-b border-[#344038]',
+    panel: 'bg-white rounded-2xl border border-[#dfe4dd] dark:bg-[#1d211e] dark:border-[#343b35]',
+    panelIcon: 'rounded-lg bg-[#e8eee8] text-[#3d6845] dark:bg-[#28342b] dark:text-[#9fbea4]',
+    heading: 'text-[#242a24] dark:text-[#ecefe9]',
+    btn: 'bg-[#426b49] hover:bg-[#355c3e] text-white rounded-lg',
+    modalCard: 'bg-white dark:bg-[#1d211e] rounded-2xl border border-[#dfe4dd] dark:border-[#343b35]',
+  };
 }

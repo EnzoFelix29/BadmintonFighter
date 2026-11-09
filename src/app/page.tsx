@@ -85,9 +85,9 @@ function formatMatchDate(iso?: string, lang: Lang = 'th'): string {
 
 // สีตราอันดับ: ทอง / เงิน / ทองแดง / ธรรมดา
 function rankBadgeClass(index: number): string {
-  if (index === 0) return 'bg-gradient-to-br from-amber-300 to-yellow-500 text-white shadow-amber-400/40';
-  if (index === 1) return 'bg-gradient-to-br from-slate-300 to-slate-400 text-white shadow-slate-400/40';
-  if (index === 2) return 'bg-gradient-to-br from-orange-300 to-amber-700 text-white shadow-orange-400/40';
+  if (index === 0) return 'bg-[#e9e2ca] text-[#5b4a22]';
+  if (index === 1) return 'bg-[#e4e8e6] text-[#4e5651]';
+  if (index === 2) return 'bg-[#e9d8ca] text-[#744d2f]';
   return 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400';
 }
 
@@ -133,18 +133,18 @@ function PlayerSlotField({
   const styles =
     accent === 'blue'
       ? {
-          border: 'border-blue-200 dark:border-blue-800',
-          btnBg: 'from-blue-50 to-blue-100 dark:from-blue-900/60 dark:to-blue-950',
+          border: 'border-[#c7d4c9] dark:border-[#35483a]',
+          btnBg: 'bg-[#edf2ed] dark:bg-[#252e27]',
           input:
-            'bg-white border-blue-200 text-blue-700 focus:ring-blue-400 dark:bg-blue-950/50 dark:text-blue-300',
-          link: 'text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300',
+            'bg-white border-[#bcc9be] text-[#355c3e] focus:ring-[#6a8b70] dark:bg-[#1f2922] dark:text-[#b7cdb9]',
+          link: 'text-[#426b49] hover:text-[#355c3e] dark:text-[#9fbea4] dark:hover:text-white',
         }
       : {
-          border: 'border-rose-200 dark:border-rose-900',
-          btnBg: 'from-rose-50 to-rose-100 dark:from-rose-900/60 dark:to-rose-950',
+          border: 'border-[#d7ddd8] dark:border-[#3a403b]',
+          btnBg: 'bg-[#f0f2ef] dark:bg-[#292d2a]',
           input:
-            'bg-white border-rose-200 text-rose-700 focus:ring-rose-400 dark:bg-rose-950/40 dark:text-rose-300',
-          link: 'text-rose-500 hover:text-rose-700 dark:text-rose-400 dark:hover:text-rose-300',
+            'bg-white border-[#cbd1cc] text-[#3d443f] focus:ring-[#7b827c] dark:bg-[#222623] dark:text-[#d1d5d1]',
+          link: 'text-[#59635b] hover:text-[#252b26] dark:text-[#b4bdb5] dark:hover:text-white',
         };
 
   const skin = profile ? getSkin(profile.skinId) : undefined;
@@ -176,7 +176,7 @@ function PlayerSlotField({
               ? t('เปิดตู้ Reel เปลี่ยนสกินไม้แบด / รองเท้าของผู้เล่นคนนี้')
               : t('เลือกผู้เล่นก่อน')
           }
-          className={`relative shrink-0 w-11 rounded-xl border bg-gradient-to-b ${styles.border} ${styles.btnBg} flex items-center justify-center transition hover:ring-2 hover:ring-blue-400/50 focus:ring-2 focus:ring-blue-400 outline-none cursor-pointer`}
+          className={`relative shrink-0 w-11 rounded-lg border ${styles.border} ${styles.btnBg} flex items-center justify-center transition-colors hover:ring-2 hover:ring-[#6a8b70]/35 focus:ring-2 focus:ring-[#6a8b70] outline-none cursor-pointer`}
         >
           {skin && <PixelAvatar skin={skin} size={34} />}
           {racket && (
@@ -897,7 +897,7 @@ export default function Home() {
   }
 
   const inputBase =
-    'w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-800 outline-none transition focus:bg-white focus:ring-2 focus:ring-blue-500/60 focus:border-blue-400 dark:bg-gray-800/70 dark:border-gray-700 dark:text-gray-100 dark:focus:bg-gray-800/70';
+    'w-full bg-[#f7f8f6] border border-[#d9ded9] rounded-lg px-3 py-2.5 text-sm text-[#252b26] outline-none transition-colors focus:bg-white focus:ring-2 focus:ring-[#6a8b70] focus:border-[#78937c] dark:bg-[#222623] dark:border-[#3a403b] dark:text-gray-100 dark:focus:bg-[#252a26]';
 
   const isDark = mounted && resolvedTheme === 'dark';
 
@@ -911,17 +911,17 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-4 py-3 flex flex-wrap justify-between items-center gap-2 sm:gap-3">
           <div className="flex items-center gap-3 min-w-0 w-full sm:w-auto justify-center sm:justify-start">
             <span
-              className="w-10 h-10 rounded-xl bg-white/15 ring-1 ring-white/30 flex items-center justify-center text-xl shrink-0 shadow-inner"
+              className="w-10 h-10 rounded-lg bg-white/8 flex items-center justify-center shrink-0"
               role="img"
               aria-label={t('แบดมินตัน')}
             >
-              🏸
+              <ShuttlecockIcon className="h-5 w-5 text-[#d9e7d9]" />
             </span>
             <div className="min-w-0">
-              <h1 className="text-lg sm:text-xl font-extrabold tracking-tight truncate leading-tight">
+              <h1 className="text-lg sm:text-xl font-semibold truncate leading-tight">
                 {t('บันทึกสถิติแบดมินตัน')}
               </h1>
-              <p className="hidden sm:block text-[11px] sm:text-xs text-blue-100/90 font-medium leading-tight">
+              <p className="hidden sm:block text-xs text-white/70 leading-tight">
                 {t('ระบบเก็บสถิติการแข่งขัน • Badminton Stats')}
               </p>
             </div>
@@ -937,7 +937,7 @@ export default function Home() {
                 onClick={() => setLang('th')}
                 aria-pressed={lang === 'th'}
                 title="ไทย — กดเพื่อสลับเป็นภาษาไทย"
-                className={`h-9 px-2.5 text-xs font-extrabold tracking-wide transition cursor-pointer ${
+                className={`h-9 px-2.5 text-xs font-medium transition-colors cursor-pointer ${
                   lang === 'th' ? 'bg-white/30 text-white' : 'hover:bg-white/15 text-white/80'
                 }`}
               >
@@ -947,7 +947,7 @@ export default function Home() {
                 onClick={() => setLang('en')}
                 aria-pressed={lang === 'en'}
                 title="English — switch to English"
-                className={`h-9 px-2.5 text-xs font-extrabold tracking-wide transition cursor-pointer ${
+                className={`h-9 px-2.5 text-xs font-medium transition-colors cursor-pointer ${
                   lang === 'en' ? 'bg-white/30 text-white' : 'hover:bg-white/15 text-white/80'
                 }`}
               >
@@ -963,7 +963,7 @@ export default function Home() {
               }}
               aria-label={t('ลงทะเบียนผู้เล่น')}
               title={t('ลงทะเบียน/จัดการผู้เล่น — เหรียญและสกินเป็นของรายบุคคล')}
-              className="bg-amber-400/25 hover:bg-amber-400/40 border border-amber-300/40 text-white px-3 py-2 rounded-xl font-semibold transition text-sm flex items-center gap-1.5"
+              className="bg-white/8 hover:bg-white/14 border border-white/15 text-white px-3 py-2 rounded-lg font-medium transition-colors text-sm flex items-center gap-1.5"
             >
               <i className="fa-solid fa-user-group"></i>
               <span className="hidden sm:inline">{t('ผู้เล่น')}</span>
@@ -1141,13 +1141,13 @@ export default function Home() {
           </div>
 
           {/* คะแนนสองทีม */}
-          <div className={`grid grid-cols-1 gap-4 mb-6 ${disp === 'landscape' ? 'md:grid-cols-2' : ''}`}>
-            <div className="bg-blue-50/60 ring-1 ring-blue-100 rounded-2xl p-4 dark:bg-blue-950/40 dark:ring-blue-900/60">
+          <div className={`relative grid grid-cols-1 gap-4 mb-6 ${disp === 'landscape' ? "md:grid-cols-2 before:content-[''] before:absolute before:top-3 before:bottom-3 before:left-1/2 before:hidden before:z-10 before:pointer-events-none md:before:block md:before:border-l md:before:border-dashed md:before:border-[#cfd9cf] dark:md:before:border-[#414d42]" : ''}`}>
+            <div className="bg-[#f3f6f2] border border-[#dce5dc] rounded-xl p-4 dark:bg-[#202722] dark:border-[#364638]">
               <div className="flex items-center justify-center gap-2 mb-3">
-                <span className="w-6 h-6 rounded-full bg-blue-600 text-white text-xs font-extrabold flex items-center justify-center shadow">
+                <span className="w-6 h-6 rounded-md bg-[#426b49] text-white text-xs font-medium flex items-center justify-center">
                   A
                 </span>
-                <h3 className="font-bold text-blue-800 dark:text-blue-300">{t('ทีม A')}</h3>
+                <h3 className="font-semibold text-[#355c3e] dark:text-[#a9c6ac]">{t('ทีม A')}</h3>
                 {serveTeam === 'A' && (
                   <span className="text-[10px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 rounded-full px-2 py-0.5 flex items-center gap-1">
                     <ShuttlecockIcon className="w-3 h-3" />
@@ -1155,7 +1155,7 @@ export default function Home() {
                   </span>
                 )}
                 {isDoublesType && (
-                  <span className="text-[10px] font-bold bg-blue-600/10 text-blue-600 dark:text-blue-300 rounded-full px-2 py-0.5">
+                  <span className="text-[10px] font-medium bg-[#e8eee8] text-[#426b49] dark:bg-[#28342b] dark:text-[#a9c6ac] rounded-md px-2 py-0.5">
                     {t('เล่นคู่')}
                   </span>
                 )}
@@ -1200,17 +1200,17 @@ export default function Home() {
                 max={scoreCap}
                 value={scoreA}
                 onChange={(e) => setScoreA(clampScoreStr(e.target.value, scoreCap))}
-                className="w-full bg-white border border-blue-200 rounded-xl px-3 py-2 text-center text-2xl font-extrabold text-blue-700 outline-none transition focus:ring-2 focus:ring-blue-400 dark:bg-blue-950/50 dark:border-blue-800 dark:text-blue-300"
+                className="w-full bg-white border border-[#c7d4c9] rounded-lg px-3 py-2 text-center text-2xl font-semibold tabular-nums text-[#355c3e] outline-none transition-colors focus:ring-2 focus:ring-[#6a8b70] dark:bg-[#1f2922] dark:border-[#35483a] dark:text-[#b7cdb9]"
                 placeholder="0"
               />
             </div>
 
-            <div className="bg-rose-50/60 ring-1 ring-rose-100 rounded-2xl p-4 dark:bg-rose-950/30 dark:ring-rose-900/60">
+            <div className="bg-[#f5f6f4] border border-[#e0e3df] rounded-xl p-4 dark:bg-[#222623] dark:border-[#3a403b]">
               <div className="flex items-center justify-center gap-2 mb-3">
-                <span className="w-6 h-6 rounded-full bg-rose-600 text-white text-xs font-extrabold flex items-center justify-center shadow">
+                <span className="w-6 h-6 rounded-md bg-[#49514a] text-white text-xs font-medium flex items-center justify-center">
                   B
                 </span>
-                <h3 className="font-bold text-rose-800 dark:text-rose-300">{t('ทีม B')}</h3>
+                <h3 className="font-semibold text-[#343a35] dark:text-[#d0d4cf]">{t('ทีม B')}</h3>
                 {serveTeam === 'B' && (
                   <span className="text-[10px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 rounded-full px-2 py-0.5 flex items-center gap-1">
                     <ShuttlecockIcon className="w-3 h-3" />
@@ -1218,7 +1218,7 @@ export default function Home() {
                   </span>
                 )}
                 {isDoublesType && (
-                  <span className="text-[10px] font-bold bg-rose-600/10 text-rose-600 dark:text-rose-300 rounded-full px-2 py-0.5">
+                  <span className="text-[10px] font-medium bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300 rounded-md px-2 py-0.5">
                     {t('เล่นคู่')}
                   </span>
                 )}
@@ -1263,7 +1263,7 @@ export default function Home() {
                 max={scoreCap}
                 value={scoreB}
                 onChange={(e) => setScoreB(clampScoreStr(e.target.value, scoreCap))}
-                className="w-full bg-white border border-rose-200 rounded-xl px-3 py-2 text-center text-2xl font-extrabold text-rose-700 outline-none transition focus:ring-2 focus:ring-rose-400 dark:bg-rose-950/40 dark:border-rose-900 dark:text-rose-300"
+                className="w-full bg-white border border-[#cbd1cc] rounded-lg px-3 py-2 text-center text-2xl font-semibold tabular-nums text-[#3d443f] outline-none transition-colors focus:ring-2 focus:ring-[#7b827c] dark:bg-[#222623] dark:border-[#3a403b] dark:text-[#d1d5d1]"
                 placeholder="0"
               />
             </div>
@@ -1386,21 +1386,21 @@ export default function Home() {
 
           {rankedTeams.length === 0 ? (
             <div className="flex-1 flex flex-col items-center justify-center text-center py-12 border-2 border-dashed border-gray-200 rounded-2xl dark:border-gray-700">
-              <span className="text-4xl mb-3" role="img" aria-label={t('แบดมินตัน')}>
-                🏸
+              <span className="mb-3 text-[#78937c] dark:text-[#8ea991]" role="img" aria-label={t('แบดมินตัน')}>
+                <ShuttlecockIcon className="h-8 w-8" />
               </span>
               <p className="text-gray-400 text-sm font-semibold">{t('ยังไม่มีข้อมูล')}</p>
-              <p className="text-gray-300 dark:text-gray-600 text-xs mt-1">{t('เริ่มบันทึกผลการแข่งขันเลย!')}</p>
+              <p className="text-gray-400 dark:text-gray-500 text-xs mt-1">{t('เริ่มบันทึกผลการแข่งขัน')}</p>
             </div>
           ) : (
             <ol className="space-y-2.5">
               {rankedTeams.map((team, index) => (
                 <li
                   key={team.name}
-                  className="flex items-center gap-3 p-3 rounded-xl bg-white ring-1 ring-gray-100 hover:ring-blue-200 hover:bg-blue-50/40 transition dark:bg-gray-900/30 dark:ring-gray-800 dark:hover:ring-blue-800 dark:hover:bg-blue-950/40"
+                  className="flex items-center gap-3 p-3 rounded-xl bg-white border border-gray-100 hover:bg-[#f7f9f6] transition-colors dark:bg-gray-900/30 dark:border-gray-800 dark:hover:bg-[#252b26]"
                 >
                   <span
-                    className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-extrabold shrink-0 shadow ${rankBadgeClass(index)}`}
+                    className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-semibold shrink-0 ${rankBadgeClass(index)}`}
                   >
                     {index < 3 ? <i className="fa-solid fa-medal"></i> : index + 1}
                   </span>
@@ -1408,7 +1408,7 @@ export default function Home() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2">
                       <p className="font-bold text-gray-800 dark:text-gray-100 text-sm truncate">{team.name}</p>
-                      <span className="text-sm font-extrabold text-blue-600 dark:text-blue-400 shrink-0">
+                      <span className="text-sm font-semibold text-[#426b49] dark:text-[#a9c6ac] shrink-0 tabular-nums">
                         {team.winRate.toFixed(1)}%
                       </span>
                     </div>
@@ -1422,7 +1422,7 @@ export default function Home() {
                     </div>
                     <div className="h-1.5 bg-gray-100 rounded-full mt-2 overflow-hidden dark:bg-gray-800">
                       <div
-                        className="h-full bg-gradient-to-r from-blue-600 to-sky-400 rounded-full transition-all"
+                        className="h-full bg-[#557b5a] rounded-full"
                         style={{ width: `${team.winRate}%` }}
                       ></div>
                     </div>
@@ -1443,13 +1443,13 @@ export default function Home() {
       >
         <div className={`${hudSkin.modalCard} w-full ${disp === 'landscape' ? 'max-w-5xl' : 'max-w-3xl'} max-h-[90vh] flex flex-col overflow-hidden`}>
           {/* หัวโมดอล */}
-          <div className="flex justify-between items-center px-5 py-4 border-b border-gray-100 bg-gradient-to-r from-blue-50 via-white to-white dark:border-gray-800 dark:from-gray-800 dark:via-gray-900 dark:to-gray-900">
+          <div className="flex justify-between items-center px-5 py-4 border-b border-gray-200 bg-[#f7f8f6] dark:border-gray-800 dark:bg-[#202421]">
             <div className="flex items-center gap-3 min-w-0">
-              <span className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-sky-500 text-white flex items-center justify-center shadow-lg shadow-blue-600/25 shrink-0">
+              <span className="w-10 h-10 rounded-lg bg-[#e8eee8] text-[#3d6845] flex items-center justify-center shrink-0 dark:bg-[#28342b] dark:text-[#9fbea4]">
                 <i className="fa-solid fa-chart-pie"></i>
               </span>
               <div className="min-w-0">
-                <h2 className="text-xl font-extrabold text-gray-800 dark:text-gray-100 leading-tight truncate">
+                <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-100 leading-tight truncate">
                   {t('สรุปภาพรวมทั้งหมด')}
                 </h2>
                 <p className="text-xs text-gray-400">{t('สถิติทุกทีมและประวัติการแข่งขัน')}</p>
@@ -1485,7 +1485,7 @@ export default function Home() {
             {/* สถิติแต่ละทีม */}
             <section>
               <h3 className="text-base font-bold text-gray-700 dark:text-gray-200 mb-3 flex items-center gap-2">
-                <i className="fa-solid fa-users text-blue-500"></i>
+                <i className="fa-solid fa-users text-gray-500 dark:text-gray-400"></i>
                 {t('สถิติแต่ละทีม')}
                 <span className="text-xs font-medium text-gray-400 dark:text-gray-500">{t('• วงกลม Win Rate')}</span>
               </h3>
@@ -1499,11 +1499,11 @@ export default function Home() {
                   summaryTeams.map((team) => (
                       <div
                         key={team.name}
-                        className="relative bg-white ring-1 ring-gray-200 rounded-2xl p-4 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition overflow-hidden dark:bg-gray-800 dark:ring-gray-700"
+                        className="relative bg-white border border-gray-200 rounded-xl p-4 transition-colors overflow-hidden dark:bg-gray-800 dark:border-gray-700"
                       >
                         {/* อินโฟกราฟิก: วงกลม Win Rate */}
                         <div className="flex items-center gap-3 mb-3">
-                          <span className="w-11 h-11 rounded-xl bg-gradient-to-b from-slate-100 to-slate-200 dark:from-gray-700 dark:to-gray-800 flex items-center justify-center shrink-0">
+                          <span className="w-11 h-11 rounded-lg bg-[#f0f2ef] dark:bg-gray-700 flex items-center justify-center shrink-0">
                             <TeamPlayersAvatar players={teamPlayersMap[team.name]} name={team.name} size={32} />
                           </span>
                           <div className="min-w-0">
@@ -1542,7 +1542,7 @@ export default function Home() {
             {/* ประวัติการแข่งขัน */}
             <section>
               <h3 className="text-base font-bold text-gray-700 dark:text-gray-200 mb-3 flex items-center gap-2">
-                <i className="fa-solid fa-clock-rotate-left text-blue-500"></i>
+                <i className="fa-solid fa-clock-rotate-left text-gray-500 dark:text-gray-400"></i>
                 {t('ประวัติการแข่งขัน (Match History)')}
               </h3>
               <div className="overflow-x-auto ring-1 ring-gray-200 rounded-2xl dark:ring-gray-700">
@@ -1582,7 +1582,7 @@ export default function Home() {
                           <tr key={m.id} className="hover:bg-gray-50/70 dark:hover:bg-gray-800/60">
                             <td className="p-3 text-center font-bold text-gray-400">#{m.id}</td>
                             <td className="p-3 text-center">
-                              <span className="inline-flex items-center gap-1.5 bg-blue-50 text-blue-700 ring-1 ring-blue-100 px-2 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap dark:bg-blue-950/70 dark:text-blue-300 dark:ring-blue-900">
+                              <span className="inline-flex items-center gap-1.5 bg-gray-100 text-gray-600 px-2 py-0.5 rounded-md text-xs font-medium whitespace-nowrap dark:bg-gray-800 dark:text-gray-300">
                                 <i className="fa-regular fa-calendar-days text-[10px]"></i>
                                 {formatMatchDate(m.date, lang)}
                               </span>
@@ -1599,7 +1599,7 @@ export default function Home() {
                                 {m.teamA}
                               </span>
                             </td>
-                            <td className="p-3 text-center font-extrabold tracking-widest text-gray-700 dark:text-gray-200">
+                            <td className="p-3 text-center font-semibold tabular-nums text-gray-700 dark:text-gray-200">
                               {m.scoreA} - {m.scoreB}
                             </td>
                             <td className={`p-3 text-left ${bClass}`}>
