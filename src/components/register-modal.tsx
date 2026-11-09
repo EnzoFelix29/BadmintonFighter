@@ -60,13 +60,13 @@ export function RegisterModal({
         onClick={(e) => e.stopPropagation()}
       >
         {/* หัวโมดอล */}
-        <div className={`flex justify-between items-center px-5 py-4 border-b border-gray-200 ${skin.page}`}>
+        <div className="flex justify-between items-center px-5 py-4 border-b border-gray-100 dark:border-gray-800 bg-gradient-to-r from-emerald-50 via-white to-white dark:from-gray-800 dark:via-gray-900 dark:to-gray-900">
           <div className="flex items-center gap-3 min-w-0">
-            <span className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${skin.panelIcon}`}>
+            <span className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 text-white flex items-center justify-center shadow-lg shadow-emerald-500/25 shrink-0">
               <i className="fa-solid fa-user-plus"></i>
             </span>
             <div className="min-w-0">
-              <h2 className={`text-lg font-semibold leading-tight ${skin.heading}`}>
+              <h2 className="text-lg font-extrabold text-gray-800 dark:text-gray-100 leading-tight">
                 {t('ลงทะเบียนผู้เล่น')}
               </h2>
               <p className="text-xs text-gray-400">
@@ -77,7 +77,7 @@ export function RegisterModal({
           <button
             onClick={onClose}
             aria-label={t('ปิดหน้าลงทะเบียนผู้เล่น')}
-            className={`w-9 h-9 rounded-lg transition-colors flex items-center justify-center shrink-0 ${skin.chip}`}
+            className="w-9 h-9 rounded-xl text-gray-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/60 transition flex items-center justify-center shrink-0"
           >
             <i className="fa-solid fa-xmark text-lg"></i>
           </button>
@@ -87,8 +87,8 @@ export function RegisterModal({
         <div className="overflow-y-auto p-5 space-y-6">
           {/* ฟอร์มลงทะเบียนใหม่ */}
           <section>
-            <h3 className={`text-sm font-semibold mb-3 flex items-center gap-2 ${skin.heading}`}>
-              <i className={`fa-solid fa-id-card ${skin.nameA}`}></i>
+            <h3 className="text-sm font-bold text-gray-700 dark:text-gray-200 mb-3 flex items-center gap-2">
+              <i className="fa-solid fa-id-card text-emerald-500"></i>
               {t('ลงทะเบียนผู้เล่นใหม่')}
             </h3>
             <form
@@ -105,24 +105,24 @@ export function RegisterModal({
                 placeholder={t('ชื่อผู้เล่น')}
                 aria-label={t('ชื่อผู้เล่นที่จะลงทะเบียน')}
                 maxLength={24}
-                className={`rounded-lg px-3 py-2.5 text-sm font-medium outline-none transition-colors focus:ring-2 focus:ring-current ${skin.chip}`}
+                className="bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-sm font-semibold text-gray-800 outline-none transition focus:bg-white focus:ring-2 focus:ring-emerald-500/60 focus:border-emerald-400 dark:bg-gray-800/70 dark:border-gray-700 dark:text-gray-100"
               />
               <button
                 type="submit"
-                className={`${skin.btn} px-5 py-2.5 font-semibold transition-colors flex items-center justify-center gap-2 active:scale-[0.98] text-sm`}
+                className="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white px-5 py-2.5 rounded-xl font-bold shadow-lg shadow-emerald-500/25 transition flex items-center justify-center gap-2 active:scale-[0.98] text-sm"
               >
                 <i className="fa-solid fa-user-plus"></i>
                 {t('ลงทะเบียน')}
               </button>
             </form>
             {error && (
-              <p className="mt-2.5 text-xs font-medium text-rose-600 dark:text-rose-400 flex items-center gap-1.5">
+              <p className="mt-2.5 text-xs font-semibold text-rose-600 dark:text-rose-400 flex items-center gap-1.5">
                 <i className="fa-solid fa-circle-exclamation"></i>
                 {t(error)}
               </p>
             )}
             {okMsg && (
-              <p className="mt-2.5 text-xs font-medium text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+              <p className="mt-2.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
                 <i className="fa-solid fa-circle-check"></i>
                 {okMsg}
               </p>
@@ -131,8 +131,8 @@ export function RegisterModal({
 
           {/* รายชื่อผู้เล่น */}
           <section>
-            <h3 className={`text-sm font-semibold mb-3 flex items-center gap-2 ${skin.heading}`}>
-              <i className={`fa-solid fa-users ${skin.nameA}`}></i>
+            <h3 className="text-sm font-bold text-gray-700 dark:text-gray-200 mb-3 flex items-center gap-2">
+              <i className="fa-solid fa-users text-blue-500"></i>
               {t('ผู้เล่นที่ลงทะเบียนแล้ว')}
               <span className="text-xs font-medium text-gray-400">{t('({n} คน)', { n: players.length })}</span>
             </h3>
@@ -150,9 +150,9 @@ export function RegisterModal({
                   return (
                     <li
                       key={p.name}
-                      className={`flex items-center gap-3 p-3 rounded-xl ${skin.card}`}
+                      className="flex items-center gap-3 p-3 rounded-xl ring-1 ring-gray-100 bg-gray-50/60 dark:ring-gray-800 dark:bg-gray-800/40"
                     >
-                      <span className={`relative shrink-0 w-12 h-12 rounded-lg flex items-center justify-center ${skin.panelIcon}`}>
+                      <span className="relative shrink-0 w-12 h-12 rounded-xl bg-gradient-to-b from-slate-100 to-slate-200 dark:from-gray-700 dark:to-gray-800 flex items-center justify-center">
                         {skin && <PixelAvatar skin={skin} size={32} />}
                         {racket && (
                           <span className="absolute -bottom-1 -right-1 w-[18px] h-[18px] rounded-md bg-white dark:bg-gray-800 ring-1 ring-gray-200 dark:ring-gray-600 flex items-center justify-center shadow-sm">
@@ -166,11 +166,11 @@ export function RegisterModal({
                         )}
                       </span>
                       <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-gray-800 dark:text-gray-100 text-sm truncate">
+                        <p className="font-bold text-gray-800 dark:text-gray-100 text-sm truncate">
                           {p.name}
                         </p>
-                        <p className="text-xs text-amber-600 dark:text-amber-400 font-medium flex items-center gap-1 mt-0.5">
-                          <i className="fa-solid fa-coins text-xs"></i>
+                        <p className="text-xs text-amber-600 dark:text-amber-400 font-bold flex items-center gap-1 mt-0.5">
+                          <i className="fa-solid fa-coins text-[10px]"></i>
                           {t('{n} เหรียญ', { n: p.coins })}
                         </p>
                       </div>
@@ -179,7 +179,7 @@ export function RegisterModal({
                           type="button"
                           onClick={() => onPlayerAction(p.name, 'shop')}
                           title={t('ร้านค้าสกินของ {name}', { name: p.name })}
-                          className={`${skin.chip} px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1`}
+                          className="bg-amber-100 hover:bg-amber-200 text-amber-700 dark:bg-amber-950/70 dark:text-amber-300 dark:hover:bg-amber-900/70 px-2.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1"
                         >
                           <i className="fa-solid fa-bag-shopping"></i>
                           <span className="hidden sm:inline">{t('ร้านค้า')}</span>
@@ -188,7 +188,7 @@ export function RegisterModal({
                           type="button"
                           onClick={() => onPlayerAction(p.name, 'delete')}
                           title={t('ลบผู้เล่น {name}', { name: p.name })}
-                          className="bg-rose-100 hover:bg-rose-200 text-rose-600 dark:bg-rose-950/60 dark:text-rose-300 dark:hover:bg-rose-900/60 w-8 h-8 rounded-lg text-xs font-semibold transition-colors flex items-center justify-center"
+                          className="bg-rose-100 hover:bg-rose-200 text-rose-600 dark:bg-rose-950/60 dark:text-rose-300 dark:hover:bg-rose-900/60 w-8 h-8 rounded-lg text-xs font-bold transition flex items-center justify-center"
                         >
                           <i className="fa-solid fa-trash-can"></i>
                         </button>
@@ -203,7 +203,7 @@ export function RegisterModal({
 
         {/* ท้ายโมดอล */}
         <div className="px-5 py-3.5 border-t border-gray-100 bg-gray-50 dark:border-gray-800 dark:bg-gray-800/60 flex items-center justify-between gap-3">
-          <p className="text-xs text-gray-400 hidden sm:block">
+          <p className="text-[11px] text-gray-400 hidden sm:block">
             <i className="fa-solid fa-circle-info mr-1"></i>
             {t(
               'ทุกคนมีเหรียญและสกินของตัวเอง — กดร้านค้าเพื่อปลดล็อคสกินใหม่ (100 เหรียญ/สกิน)'

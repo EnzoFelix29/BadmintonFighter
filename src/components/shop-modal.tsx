@@ -6,7 +6,6 @@ import { RACKET_SKINS, SHOE_SKINS, SHOP_PRICE, type GearSkin } from '@/lib/gear'
 import { useLang } from '@/lib/i18n';
 import { GearPixel } from './gear-pixel';
 import { ShuttlecockIcon } from './shuttlecock-icon';
-import type { HudSkin } from '@/lib/hud-skins';
 
 type ShopTab = 'racket' | 'shoe';
 
@@ -17,7 +16,6 @@ export function ShopModal({
   playerName,
   coins,
   unlockedIds,
-  skin,
   onBuy,
   onClose,
 }: {
@@ -25,7 +23,6 @@ export function ShopModal({
   playerName: string; // เจ้าของร้าน — ใช้เหรียญรายบุคคลของคนนี้ซื้อ
   coins: number;
   unlockedIds: string[];
-  skin: HudSkin;
   onBuy: (gear: GearSkin) => void;
   onClose: () => void;
 }) {
@@ -45,17 +42,17 @@ export function ShopModal({
       onClick={onClose}
     >
       <div
-        className={`${skin.modalCard} w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden`}
+        className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden ring-1 ring-gray-200/70 dark:ring-gray-700/60"
         onClick={(e) => e.stopPropagation()}
       >
         {/* หัวโมดอล */}
-        <div className={`flex justify-between items-center px-5 py-4 border-b border-gray-200 ${skin.page}`}>
+        <div className="flex justify-between items-center px-5 py-4 border-b border-gray-100 dark:border-gray-800 bg-gradient-to-r from-amber-50 via-white to-white dark:from-gray-800 dark:via-gray-900 dark:to-gray-900">
           <div className="flex items-center gap-3 min-w-0">
-            <span className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${skin.panelIcon}`}>
+            <span className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 text-white flex items-center justify-center text-lg shadow-lg shadow-amber-500/25 shrink-0">
               <i className="fa-solid fa-bag-shopping"></i>
             </span>
             <div className="min-w-0">
-              <h2 className={`text-lg font-semibold leading-tight ${skin.heading}`}>
+              <h2 className="text-lg font-extrabold text-gray-800 dark:text-gray-100 leading-tight">
                 {t('ร้านค้าสกินเท่ห์ — {name}', { name: playerName })}
               </h2>
               <p className="text-xs text-gray-400">
@@ -68,7 +65,7 @@ export function ShopModal({
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <span
-              className={`${skin.chip} px-3 py-1.5 rounded-lg text-sm font-medium tabular-nums flex items-center gap-1.5`}
+              className="bg-amber-100 text-amber-700 ring-1 ring-amber-200 dark:bg-amber-950/70 dark:text-amber-300 dark:ring-amber-900 px-3 py-1.5 rounded-xl text-sm font-extrabold flex items-center gap-1.5"
               title={t('เหรียญสะสมของ {name}', { name: playerName })}
             >
               <i className="fa-solid fa-coins"></i>
@@ -77,7 +74,7 @@ export function ShopModal({
             <button
               onClick={onClose}
               aria-label={t('ปิดร้านค้า')}
-              className={`w-9 h-9 rounded-lg transition-colors flex items-center justify-center ${skin.chip}`}
+              className="w-9 h-9 rounded-xl text-gray-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/60 transition flex items-center justify-center"
             >
               <i className="fa-solid fa-xmark text-lg"></i>
             </button>
@@ -95,12 +92,14 @@ export function ShopModal({
             <button
               key={tb.key}
               onClick={() => setTab(tb.key)}
-              className={`inline-flex items-center justify-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                tab === tb.key ? skin.btn : skin.chip
+              className={`inline-flex items-center justify-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-bold transition ring-1 ${
+                tab === tb.key
+                  ? 'bg-amber-500 text-white ring-amber-500 shadow-md shadow-amber-500/25'
+                  : 'bg-gray-50 text-gray-500 ring-gray-200 hover:bg-gray-100 dark:bg-gray-800 dark:text-gray-300 dark:ring-gray-700 dark:hover:bg-gray-700'
               }`}
             >
               {tb.icon}
-              {tb.label} {(tb.key === 'racket' ? RACKET_SKINS : SHOE_SKINS).filter((g) => g.price > 0).length}
+              {tb.label} 10
             </button>
           ))}
         </div>
@@ -114,17 +113,21 @@ export function ShopModal({
               return (
                 <div
                   key={g.id}
-                  className={`flex items-center gap-3 rounded-xl p-3 transition-colors ${skin.card} ${owned ? 'ring-2 ring-emerald-500/35' : ''}`}
+                  className={`flex items-center gap-3 rounded-2xl p-3 ring-1 transition ${
+                    owned
+                      ? 'bg-emerald-50/60 ring-emerald-200 dark:bg-emerald-950/30 dark:ring-emerald-900'
+                      : 'bg-white ring-gray-200 hover:ring-amber-300 dark:bg-gray-800 dark:ring-gray-700 dark:hover:ring-amber-700'
+                  }`}
                 >
-                  <span className={`w-16 h-16 rounded-lg flex items-center justify-center shrink-0 ${skin.panelIcon}`}>
+                  <span className="w-16 h-16 rounded-xl bg-gradient-to-b from-slate-100 to-slate-200 dark:from-gray-700 dark:to-gray-800 flex items-center justify-center shrink-0">
                     <GearPixel gear={g} size={40} />
                   </span>
                   <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-gray-800 dark:text-gray-100 text-sm truncate">
+                    <p className="font-extrabold text-gray-800 dark:text-gray-100 text-sm truncate">
                       {t(g.name)}
                     </p>
                     <p className="text-xs text-amber-600 dark:text-amber-400 font-bold flex items-center gap-1 mt-0.5">
-                      <i className="fa-solid fa-coins text-xs"></i>
+                      <i className="fa-solid fa-coins text-[10px]"></i>
                       {t('{n} เหรียญ', { n: g.price })}
                     </p>
                     {owned ? (
@@ -141,9 +144,9 @@ export function ShopModal({
                             ? t('ปลดล็อค {name}', { name: t(g.name) })
                             : t('เหรียญไม่พอ — เก็บเหรียญเพิ่มจากการแข่งขัน')
                         }
-                        className={`mt-1.5 w-full text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors flex items-center justify-center gap-1.5 ${
+                        className={`mt-1.5 w-full text-xs font-bold px-3 py-1.5 rounded-lg transition flex items-center justify-center gap-1.5 ${
                           affordable
-                            ? `${skin.btn} active:scale-[0.98]`
+                            ? 'bg-gradient-to-r from-amber-400 to-orange-500 text-white shadow-md shadow-orange-500/20 hover:brightness-110 active:scale-[0.98]'
                             : 'bg-gray-100 text-gray-400 cursor-not-allowed dark:bg-gray-700/60 dark:text-gray-500'
                         }`}
                       >
@@ -160,7 +163,7 @@ export function ShopModal({
 
         {/* ท้ายโมดอล */}
         <div className="px-5 py-3.5 border-t border-gray-100 bg-gray-50 dark:border-gray-800 dark:bg-gray-800/60 flex items-center justify-between gap-3">
-        <p className="text-xs text-gray-400 hidden sm:block">
+          <p className="text-[11px] text-gray-400 hidden sm:block">
             <i className="fa-solid fa-circle-info mr-1"></i>
             {t('เก็บเหรียญจากการบันทึกผลแข่ง (รายบุคคล): ชนะ +7 เหรียญ • แพ้ +3 เหรียญ')}
           </p>

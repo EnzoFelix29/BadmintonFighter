@@ -14,7 +14,7 @@ import {
   updateProfile,
   type PlayerProfile,
 } from '@/lib/players';
-import { getHudSkin, HUD_SKIN_KEY, type HudSkin } from '@/lib/hud-skins';
+import { getHudSkin, HUD_SKIN_KEY } from '@/lib/hud-skins';
 import { useLang, type Lang } from '@/lib/i18n';
 import { PixelAvatar, TeamPlayersAvatar, type PlayerInfo } from '@/components/pixel-avatar';
 import { ScoreHud } from '@/components/score-hud';
@@ -85,9 +85,9 @@ function formatMatchDate(iso?: string, lang: Lang = 'th'): string {
 
 // สีตราอันดับ: ทอง / เงิน / ทองแดง / ธรรมดา
 function rankBadgeClass(index: number): string {
-  if (index === 0) return 'bg-[#e9e2ca] text-[#5b4a22]';
-  if (index === 1) return 'bg-[#e4e8e6] text-[#4e5651]';
-  if (index === 2) return 'bg-[#e9d8ca] text-[#744d2f]';
+  if (index === 0) return 'bg-gradient-to-br from-amber-300 to-yellow-500 text-white shadow-amber-400/40';
+  if (index === 1) return 'bg-gradient-to-br from-slate-300 to-slate-400 text-white shadow-slate-400/40';
+  if (index === 2) return 'bg-gradient-to-br from-orange-300 to-amber-700 text-white shadow-orange-400/40';
   return 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400';
 }
 
@@ -116,7 +116,6 @@ function PlayerSlotField({
   onOpenPicker,
   onOpenReel,
   onOpenRegister,
-  hudSkin,
 }: {
   id: string;
   label: string;
@@ -129,20 +128,23 @@ function PlayerSlotField({
   onOpenPicker: () => void;
   onOpenReel: () => void;
   onOpenRegister: () => void;
-  hudSkin: HudSkin;
 }) {
   const { t } = useLang();
   const styles =
     accent === 'blue'
       ? {
-          btnBg: hudSkin.card,
-          input: hudSkin.chip,
-          link: hudSkin.nameA,
+          border: 'border-blue-200 dark:border-blue-800',
+          btnBg: 'from-blue-50 to-blue-100 dark:from-blue-900/60 dark:to-blue-950',
+          input:
+            'bg-white border-blue-200 text-blue-700 focus:ring-blue-400 dark:bg-blue-950/50 dark:text-blue-300',
+          link: 'text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300',
         }
       : {
-          btnBg: hudSkin.card,
-          input: hudSkin.chip,
-          link: hudSkin.nameB,
+          border: 'border-rose-200 dark:border-rose-900',
+          btnBg: 'from-rose-50 to-rose-100 dark:from-rose-900/60 dark:to-rose-950',
+          input:
+            'bg-white border-rose-200 text-rose-700 focus:ring-rose-400 dark:bg-rose-950/40 dark:text-rose-300',
+          link: 'text-rose-500 hover:text-rose-700 dark:text-rose-400 dark:hover:text-rose-300',
         };
 
   const skin = profile ? getSkin(profile.skinId) : undefined;
@@ -158,7 +160,7 @@ function PlayerSlotField({
         <button
           type="button"
           onClick={onOpenPicker}
-          className={`text-xs font-medium transition-colors cursor-pointer ${styles.link}`}
+          className={`text-[10px] font-semibold transition cursor-pointer ${styles.link}`}
         >
           <i className="fa-solid fa-user-pen mr-0.5"></i>
           {t('เปลี่ยนตัวละคร')}
@@ -174,7 +176,7 @@ function PlayerSlotField({
               ? t('เปิดตู้ Reel เปลี่ยนสกินไม้แบด / รองเท้าของผู้เล่นคนนี้')
               : t('เลือกผู้เล่นก่อน')
           }
-          className={`relative shrink-0 w-11 rounded-lg ${styles.btnBg} flex items-center justify-center transition-colors hover:ring-2 focus:ring-2 focus:ring-current outline-none cursor-pointer ${accent === 'blue' ? hudSkin.nameA : hudSkin.nameB}`}
+          className={`relative shrink-0 w-11 rounded-xl border bg-gradient-to-b ${styles.border} ${styles.btnBg} flex items-center justify-center transition hover:ring-2 hover:ring-blue-400/50 focus:ring-2 focus:ring-blue-400 outline-none cursor-pointer`}
         >
           {skin && <PixelAvatar skin={skin} size={34} />}
           {racket && (
@@ -195,7 +197,7 @@ function PlayerSlotField({
             if (e.target.value === '__register') onOpenRegister();
             else onSelectName(e.target.value);
           }}
-          className={`flex-1 min-w-0 rounded-lg px-3 py-2 text-sm font-medium outline-none transition focus:ring-2 cursor-pointer ${styles.input}`}
+          className={`flex-1 min-w-0 border rounded-xl px-3 py-2 text-sm font-semibold outline-none transition focus:ring-2 cursor-pointer ${styles.border} ${styles.input}`}
         >
           <option value="">— {t('เลือกผู้เล่น')} —</option>
           {players.map((p) => {
@@ -894,7 +896,8 @@ export default function Home() {
     if (m.playersB?.length) teamPlayersMap[m.teamB] = m.playersB;
   }
 
-  const inputBase = `w-full rounded-lg px-3 py-2.5 text-sm outline-none transition-colors focus:ring-2 focus:ring-current ${hudSkin.chip}`;
+  const inputBase =
+    'w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-800 outline-none transition focus:bg-white focus:ring-2 focus:ring-blue-500/60 focus:border-blue-400 dark:bg-gray-800/70 dark:border-gray-700 dark:text-gray-100 dark:focus:bg-gray-800/70';
 
   const isDark = mounted && resolvedTheme === 'dark';
 
@@ -905,20 +908,20 @@ export default function Home() {
     >
       {/* ===== Navbar ===== */}
       <nav className={`sticky top-0 z-40 ${hudSkin.nav}`}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-wrap justify-between items-center gap-2 sm:gap-3">
+        <div className="max-w-7xl mx-auto px-4 py-3 flex flex-wrap justify-between items-center gap-2 sm:gap-3">
           <div className="flex items-center gap-3 min-w-0 w-full sm:w-auto justify-center sm:justify-start">
             <span
-              className="w-10 h-10 rounded-lg bg-white/8 flex items-center justify-center shrink-0"
+              className="w-10 h-10 rounded-xl bg-white/15 ring-1 ring-white/30 flex items-center justify-center text-xl shrink-0 shadow-inner"
               role="img"
               aria-label={t('แบดมินตัน')}
             >
-              <ShuttlecockIcon className="h-5 w-5 text-[#d9e7d9]" />
+              🏸
             </span>
             <div className="min-w-0">
-              <h1 className="text-lg sm:text-xl font-semibold truncate leading-tight">
+              <h1 className="text-lg sm:text-xl font-extrabold tracking-tight truncate leading-tight">
                 {t('บันทึกสถิติแบดมินตัน')}
               </h1>
-              <p className="hidden sm:block text-xs text-white/70 leading-tight">
+              <p className="hidden sm:block text-[11px] sm:text-xs text-blue-100/90 font-medium leading-tight">
                 {t('ระบบเก็บสถิติการแข่งขัน • Badminton Stats')}
               </p>
             </div>
@@ -934,7 +937,7 @@ export default function Home() {
                 onClick={() => setLang('th')}
                 aria-pressed={lang === 'th'}
                 title="ไทย — กดเพื่อสลับเป็นภาษาไทย"
-                className={`h-9 px-2.5 text-xs font-medium transition-colors cursor-pointer ${
+                className={`h-9 px-2.5 text-xs font-extrabold tracking-wide transition cursor-pointer ${
                   lang === 'th' ? 'bg-white/30 text-white' : 'hover:bg-white/15 text-white/80'
                 }`}
               >
@@ -944,7 +947,7 @@ export default function Home() {
                 onClick={() => setLang('en')}
                 aria-pressed={lang === 'en'}
                 title="English — switch to English"
-                className={`h-9 px-2.5 text-xs font-medium transition-colors cursor-pointer ${
+                className={`h-9 px-2.5 text-xs font-extrabold tracking-wide transition cursor-pointer ${
                   lang === 'en' ? 'bg-white/30 text-white' : 'hover:bg-white/15 text-white/80'
                 }`}
               >
@@ -960,11 +963,11 @@ export default function Home() {
               }}
               aria-label={t('ลงทะเบียนผู้เล่น')}
               title={t('ลงทะเบียน/จัดการผู้เล่น — เหรียญและสกินเป็นของรายบุคคล')}
-              className="bg-white/8 hover:bg-white/14 border border-white/15 text-white px-3 py-2 rounded-lg font-medium transition-colors text-sm flex items-center gap-1.5"
+              className="bg-amber-400/25 hover:bg-amber-400/40 border border-amber-300/40 text-white px-3 py-2 rounded-xl font-semibold transition text-sm flex items-center gap-1.5"
             >
               <i className="fa-solid fa-user-group"></i>
               <span className="hidden sm:inline">{t('ผู้เล่น')}</span>
-              <span className="bg-white/15 rounded-md px-1.5 text-xs font-medium tabular-nums">
+              <span className="bg-white/20 rounded-md px-1.5 text-xs font-extrabold">
                 {mounted ? players.length : '–'}
               </span>
             </button>
@@ -1039,7 +1042,7 @@ export default function Home() {
                 setModalOpen(true);
                 playSound('open');
               }}
-              className={`${hudSkin.btn} px-3 py-2 font-semibold transition-colors text-sm flex items-center gap-1.5`}
+              className={`${hudSkin.btn} px-3 py-2 font-bold transition text-sm flex items-center gap-1.5`}
             >
               <i className="fa-solid fa-chart-pie"></i>
               <span className="hidden sm:inline">{t('สรุปภาพรวม')}</span>
@@ -1049,7 +1052,7 @@ export default function Home() {
       </nav>
 
       <main
-        className={`mx-auto px-4 sm:px-6 lg:px-8 py-6 grid grid-cols-1 gap-6 ${
+        className={`mx-auto px-4 py-6 grid grid-cols-1 gap-6 ${
           disp === 'landscape' ? 'max-w-7xl lg:grid-cols-3' : 'max-w-lg'
         }`}
       >
@@ -1064,7 +1067,7 @@ export default function Home() {
               <i className="fa-solid fa-pen-to-square text-sm"></i>
             </span>
             <div>
-              <h2 className={`${hudSkin.heading} text-lg font-semibold leading-tight`}>
+              <h2 className={`${hudSkin.heading} text-lg font-bold leading-tight`}>
                 {t('บันทึกผลการแข่งขัน')}
               </h2>
               <p className="text-xs text-gray-400">
@@ -1138,21 +1141,21 @@ export default function Home() {
           </div>
 
           {/* คะแนนสองทีม */}
-          <div className={`relative grid grid-cols-1 gap-4 mb-6 ${disp === 'landscape' ? "md:grid-cols-2 before:content-[''] before:absolute before:top-3 before:bottom-3 before:left-1/2 before:hidden before:z-10 before:pointer-events-none md:before:block md:before:border-l md:before:border-dashed md:before:border-[#cfd9cf] dark:md:before:border-[#414d42]" : ''}`}>
-            <div className={`${hudSkin.card} p-4`}>
+          <div className={`grid grid-cols-1 gap-4 mb-6 ${disp === 'landscape' ? 'md:grid-cols-2' : ''}`}>
+            <div className="bg-blue-50/60 ring-1 ring-blue-100 rounded-2xl p-4 dark:bg-blue-950/40 dark:ring-blue-900/60">
               <div className="flex items-center justify-center gap-2 mb-3">
-                <span className={`w-6 h-6 rounded-md text-xs font-medium flex items-center justify-center ${hudSkin.panelIcon}`}>
+                <span className="w-6 h-6 rounded-full bg-blue-600 text-white text-xs font-extrabold flex items-center justify-center shadow">
                   A
                 </span>
-                <h3 className={`font-semibold ${hudSkin.nameA}`}>{t('ทีม A')}</h3>
+                <h3 className="font-bold text-blue-800 dark:text-blue-300">{t('ทีม A')}</h3>
                 {serveTeam === 'A' && (
-                  <span className="text-xs font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 rounded-md px-2 py-0.5 flex items-center gap-1">
+                  <span className="text-[10px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 rounded-full px-2 py-0.5 flex items-center gap-1">
                     <ShuttlecockIcon className="w-3 h-3" />
                     {t('เสิร์ฟก่อน')}
                   </span>
                 )}
                 {isDoublesType && (
-                  <span className={`text-xs font-medium rounded-md px-2 py-0.5 ${hudSkin.chip}`}>
+                  <span className="text-[10px] font-bold bg-blue-600/10 text-blue-600 dark:text-blue-300 rounded-full px-2 py-0.5">
                     {t('เล่นคู่')}
                   </span>
                 )}
@@ -1170,7 +1173,6 @@ export default function Home() {
                   onOpenPicker={() => openSlotPicker('A1')}
                   onOpenReel={() => openSlotReel('A1')}
                   onOpenRegister={() => openRegisterFor('A1')}
-                  hudSkin={hudSkin}
                 />
                 {isDoublesType && (
                   <PlayerSlotField
@@ -1185,7 +1187,6 @@ export default function Home() {
                     onOpenPicker={() => openSlotPicker('A2')}
                     onOpenReel={() => openSlotReel('A2')}
                     onOpenRegister={() => openRegisterFor('A2')}
-                    hudSkin={hudSkin}
                   />
                 )}
               </div>
@@ -1199,25 +1200,25 @@ export default function Home() {
                 max={scoreCap}
                 value={scoreA}
                 onChange={(e) => setScoreA(clampScoreStr(e.target.value, scoreCap))}
-                className={`w-full rounded-lg px-3 py-2 text-center text-2xl font-semibold tabular-nums outline-none transition-colors focus:ring-2 focus:ring-current ${hudSkin.chip}`}
+                className="w-full bg-white border border-blue-200 rounded-xl px-3 py-2 text-center text-2xl font-extrabold text-blue-700 outline-none transition focus:ring-2 focus:ring-blue-400 dark:bg-blue-950/50 dark:border-blue-800 dark:text-blue-300"
                 placeholder="0"
               />
             </div>
 
-            <div className={`${hudSkin.card} p-4`}>
+            <div className="bg-rose-50/60 ring-1 ring-rose-100 rounded-2xl p-4 dark:bg-rose-950/30 dark:ring-rose-900/60">
               <div className="flex items-center justify-center gap-2 mb-3">
-                <span className={`w-6 h-6 rounded-md text-xs font-medium flex items-center justify-center ${hudSkin.panelIcon}`}>
+                <span className="w-6 h-6 rounded-full bg-rose-600 text-white text-xs font-extrabold flex items-center justify-center shadow">
                   B
                 </span>
-                <h3 className={`font-semibold ${hudSkin.nameB}`}>{t('ทีม B')}</h3>
+                <h3 className="font-bold text-rose-800 dark:text-rose-300">{t('ทีม B')}</h3>
                 {serveTeam === 'B' && (
-                  <span className="text-xs font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 rounded-md px-2 py-0.5 flex items-center gap-1">
+                  <span className="text-[10px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 rounded-full px-2 py-0.5 flex items-center gap-1">
                     <ShuttlecockIcon className="w-3 h-3" />
                     {t('เสิร์ฟก่อน')}
                   </span>
                 )}
                 {isDoublesType && (
-                  <span className={`text-xs font-medium rounded-md px-2 py-0.5 ${hudSkin.chip}`}>
+                  <span className="text-[10px] font-bold bg-rose-600/10 text-rose-600 dark:text-rose-300 rounded-full px-2 py-0.5">
                     {t('เล่นคู่')}
                   </span>
                 )}
@@ -1235,7 +1236,6 @@ export default function Home() {
                   onOpenPicker={() => openSlotPicker('B1')}
                   onOpenReel={() => openSlotReel('B1')}
                   onOpenRegister={() => openRegisterFor('B1')}
-                  hudSkin={hudSkin}
                 />
                 {isDoublesType && (
                   <PlayerSlotField
@@ -1250,7 +1250,6 @@ export default function Home() {
                     onOpenPicker={() => openSlotPicker('B2')}
                     onOpenReel={() => openSlotReel('B2')}
                     onOpenRegister={() => openRegisterFor('B2')}
-                    hudSkin={hudSkin}
                   />
                 )}
               </div>
@@ -1264,7 +1263,7 @@ export default function Home() {
                 max={scoreCap}
                 value={scoreB}
                 onChange={(e) => setScoreB(clampScoreStr(e.target.value, scoreCap))}
-                className={`w-full rounded-lg px-3 py-2 text-center text-2xl font-semibold tabular-nums outline-none transition-colors focus:ring-2 focus:ring-current ${hudSkin.chip}`}
+                className="w-full bg-white border border-rose-200 rounded-xl px-3 py-2 text-center text-2xl font-extrabold text-rose-700 outline-none transition focus:ring-2 focus:ring-rose-400 dark:bg-rose-950/40 dark:border-rose-900 dark:text-rose-300"
                 placeholder="0"
               />
             </div>
@@ -1281,7 +1280,7 @@ export default function Home() {
                 id="maxScore"
                 value={maxScore}
                 onChange={(e) => setMaxScore(e.target.value)}
-                className={`rounded-lg px-2.5 py-1.5 text-sm font-medium outline-none cursor-pointer transition-colors focus:ring-2 ${hudSkin.chip}`}
+                className="border border-gray-200 bg-gray-50 rounded-lg px-2.5 py-1.5 text-sm font-semibold text-gray-800 outline-none cursor-pointer transition focus:ring-2 focus:ring-blue-400 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100"
               >
                 <option value="21">{t('21 แต้ม')}</option>
                 <option value="15">{t('15 แต้ม')}</option>
@@ -1316,11 +1315,11 @@ export default function Home() {
                 <i className="fa-solid fa-dice text-xs"></i>
               </span>
               <div>
-              <h3 className={`${hudSkin.heading} text-sm font-semibold leading-tight`}>{t('ลูกเล่นหลังตีแบต')}</h3>
-                <p className="text-xs text-gray-400">{t('คิดตังค่าสนาม • จระเข้กดนิ้ว • HI-LO • ดีโน่รัน')}</p>
+                <h3 className={`${hudSkin.heading} text-sm font-bold leading-tight`}>{t('ลูกเล่นหลังตีแบต')}</h3>
+                <p className="text-[11px] text-gray-400">{t('คิดตังค่าสนาม • จระเข้กดนิ้ว • HI-LO • ดีโน่รัน')}</p>
               </div>
             </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               <button
                 type="button"
                 onClick={() => {
@@ -1328,9 +1327,9 @@ export default function Home() {
                   playSound('open');
                 }}
                 title={t('คิดตังค่าสนาม — ใส่ราคารวมค่าคอร์ทและจำนวนคนที่จะหาร')}
-                className={`${hudSkin.chip} rounded-lg px-2 py-3 flex flex-col items-center gap-1 text-xs font-medium leading-tight text-center transition-colors active:scale-[0.98] cursor-pointer`}
+                className={`${hudSkin.btn} px-1 py-2.5 flex flex-col items-center gap-1 text-[11px] font-bold leading-tight text-center transition active:scale-[0.97] cursor-pointer`}
               >
-                <i className="fa-solid fa-calculator text-base" aria-hidden="true"></i>
+                <span className="text-lg leading-none" aria-hidden="true">🧮</span>
                 {t('คิดตังค่าสนาม')}
               </button>
               <button
@@ -1340,9 +1339,9 @@ export default function Home() {
                   playSound('open');
                 }}
                 title={t('มินิเกมจระเข้กดนิ้ว — ผลัดกันกดฟัน ซี่ไหนเจอฟันเสียจะโดนกัด')}
-                className={`${hudSkin.chip} rounded-lg px-2 py-3 flex flex-col items-center gap-1 text-xs font-medium leading-tight text-center transition-colors active:scale-[0.98] cursor-pointer`}
+                className={`${hudSkin.btn} px-1 py-2.5 flex flex-col items-center gap-1 text-[11px] font-bold leading-tight text-center transition active:scale-[0.97] cursor-pointer`}
               >
-                <i className="fa-solid fa-dragon text-base" aria-hidden="true"></i>
+                <span className="text-lg leading-none" aria-hidden="true">🐊</span>
                 {t('จระเข้กดนิ้ว')}
               </button>
               <button
@@ -1352,9 +1351,9 @@ export default function Home() {
                   playSound('open');
                 }}
                 title={t('มินิเกม HI-LO — ทายว่าไพ่ต่อไปสูงกว่าหรือต่ำกว่า')}
-                className={`${hudSkin.chip} rounded-lg px-2 py-3 flex flex-col items-center gap-1 text-xs font-medium leading-tight text-center transition-colors active:scale-[0.98] cursor-pointer`}
+                className={`${hudSkin.btn} px-1 py-2.5 flex flex-col items-center gap-1 text-[11px] font-bold leading-tight text-center transition active:scale-[0.97] cursor-pointer`}
               >
-                <i className="fa-solid fa-clone text-base" aria-hidden="true"></i>
+                <span className="text-lg leading-none" aria-hidden="true">🃏</span>
                 HI-LO
               </button>
               <button
@@ -1364,9 +1363,9 @@ export default function Home() {
                   playSound('open');
                 }}
                 title={t('มินิเกมดีโน่รัน — กด SPACE หรือแตะจอเพื่อกระโดดหลบแคคตัส เก็บคะแนนสูงสุด')}
-                className={`${hudSkin.chip} rounded-lg px-2 py-3 flex flex-col items-center gap-1 text-xs font-medium leading-tight text-center transition-colors active:scale-[0.98] cursor-pointer`}
+                className={`${hudSkin.btn} px-1 py-2.5 flex flex-col items-center gap-1 text-[11px] font-bold leading-tight text-center transition active:scale-[0.97] cursor-pointer`}
               >
-                <i className="fa-solid fa-person-running text-base" aria-hidden="true"></i>
+                <span className="text-lg leading-none" aria-hidden="true">🦖</span>
                 {t('ดีโน่รัน')}
               </button>
             </div>
@@ -1380,50 +1379,50 @@ export default function Home() {
               <i className="fa-solid fa-trophy text-sm"></i>
             </span>
             <div>
-              <h2 className={`${hudSkin.heading} text-lg font-semibold leading-tight`}>{t('ตารางอันดับ')}</h2>
+              <h2 className={`${hudSkin.heading} text-lg font-bold leading-tight`}>{t('ตารางอันดับ')}</h2>
               <p className="text-xs text-gray-400">{t('จัดอันดับตาม Win Rate แบบเรียลไทม์')}</p>
             </div>
           </div>
 
           {rankedTeams.length === 0 ? (
             <div className="flex-1 flex flex-col items-center justify-center text-center py-12 border-2 border-dashed border-gray-200 rounded-2xl dark:border-gray-700">
-              <span className={`mb-3 ${hudSkin.nameA}`} role="img" aria-label={t('แบดมินตัน')}>
-                <ShuttlecockIcon className="h-8 w-8" />
+              <span className="text-4xl mb-3" role="img" aria-label={t('แบดมินตัน')}>
+                🏸
               </span>
               <p className="text-gray-400 text-sm font-semibold">{t('ยังไม่มีข้อมูล')}</p>
-              <p className="text-gray-400 dark:text-gray-500 text-xs mt-1">{t('เริ่มบันทึกผลการแข่งขัน')}</p>
+              <p className="text-gray-300 dark:text-gray-600 text-xs mt-1">{t('เริ่มบันทึกผลการแข่งขันเลย!')}</p>
             </div>
           ) : (
             <ol className="space-y-2.5">
               {rankedTeams.map((team, index) => (
                 <li
                   key={team.name}
-                  className={`flex items-center gap-3 p-3 rounded-xl transition-colors ${hudSkin.card}`}
+                  className="flex items-center gap-3 p-3 rounded-xl bg-white ring-1 ring-gray-100 hover:ring-blue-200 hover:bg-blue-50/40 transition dark:bg-gray-900/30 dark:ring-gray-800 dark:hover:ring-blue-800 dark:hover:bg-blue-950/40"
                 >
                   <span
-                    className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-semibold shrink-0 ${rankBadgeClass(index)}`}
+                    className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-extrabold shrink-0 shadow ${rankBadgeClass(index)}`}
                   >
                     {index < 3 ? <i className="fa-solid fa-medal"></i> : index + 1}
                   </span>
                   <TeamPlayersAvatar players={teamPlayersMap[team.name]} name={team.name} size={26} />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2">
-                      <p className="font-semibold text-gray-800 dark:text-gray-100 text-sm truncate">{team.name}</p>
-                      <span className={`text-sm font-semibold shrink-0 tabular-nums ${hudSkin.nameA}`}>
+                      <p className="font-bold text-gray-800 dark:text-gray-100 text-sm truncate">{team.name}</p>
+                      <span className="text-sm font-extrabold text-blue-600 dark:text-blue-400 shrink-0">
                         {team.winRate.toFixed(1)}%
                       </span>
                     </div>
                     <div className="flex items-center justify-between text-xs text-gray-400 mt-0.5">
                       <span>{t('แข่ง {n} แมตช์', { n: team.played })}</span>
                       <span>
-                        <span className="text-emerald-600 dark:text-emerald-400 font-medium">{team.win}W</span>
+                        <span className="text-emerald-600 dark:text-emerald-400 font-bold">{team.win}W</span>
                         {' - '}
-                        <span className="text-rose-500 dark:text-rose-400 font-medium">{team.lose}L</span>
+                        <span className="text-rose-500 dark:text-rose-400 font-bold">{team.lose}L</span>
                       </span>
                     </div>
                     <div className="h-1.5 bg-gray-100 rounded-full mt-2 overflow-hidden dark:bg-gray-800">
                       <div
-                        className={`h-full rounded-full ${hudSkin.serve}`}
+                        className="h-full bg-gradient-to-r from-blue-600 to-sky-400 rounded-full transition-all"
                         style={{ width: `${team.winRate}%` }}
                       ></div>
                     </div>
@@ -1444,13 +1443,13 @@ export default function Home() {
       >
         <div className={`${hudSkin.modalCard} w-full ${disp === 'landscape' ? 'max-w-5xl' : 'max-w-3xl'} max-h-[90vh] flex flex-col overflow-hidden`}>
           {/* หัวโมดอล */}
-          <div className={`flex justify-between items-center px-5 py-4 border-b border-gray-200 ${hudSkin.page}`}>
+          <div className="flex justify-between items-center px-5 py-4 border-b border-gray-100 bg-gradient-to-r from-blue-50 via-white to-white dark:border-gray-800 dark:from-gray-800 dark:via-gray-900 dark:to-gray-900">
             <div className="flex items-center gap-3 min-w-0">
-              <span className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${hudSkin.panelIcon}`}>
+              <span className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-sky-500 text-white flex items-center justify-center shadow-lg shadow-blue-600/25 shrink-0">
                 <i className="fa-solid fa-chart-pie"></i>
               </span>
               <div className="min-w-0">
-                <h2 className={`text-xl font-semibold leading-tight truncate ${hudSkin.heading}`}>
+                <h2 className="text-xl font-extrabold text-gray-800 dark:text-gray-100 leading-tight truncate">
                   {t('สรุปภาพรวมทั้งหมด')}
                 </h2>
                 <p className="text-xs text-gray-400">{t('สถิติทุกทีมและประวัติการแข่งขัน')}</p>
@@ -1467,7 +1466,7 @@ export default function Home() {
               <button
                 onClick={() => setModalOpen(false)}
                 aria-label={t('ปิดหน้าต่าง')}
-                className={`w-9 h-9 rounded-lg transition-colors flex items-center justify-center ${hudSkin.chip}`}
+                className="w-9 h-9 rounded-xl text-gray-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/60 transition flex items-center justify-center"
               >
                 <i className="fa-solid fa-xmark text-lg"></i>
               </button>
@@ -1478,15 +1477,15 @@ export default function Home() {
           <div
             id="exportableArea"
             ref={exportableRef}
-            className={`overflow-y-auto p-5 space-y-8 flex-grow ${hudSkin.page}`}
+            className="overflow-y-auto p-5 space-y-8 flex-grow bg-white dark:bg-gray-900"
           >
             {/* แท่นรับเหรียญรางวัล อันดับ 1-3 */}
             <Podium teams={summaryTeams} playersMap={teamPlayersMap} />
 
             {/* สถิติแต่ละทีม */}
             <section>
-              <h3 className="text-base font-semibold text-gray-700 dark:text-gray-200 mb-3 flex items-center gap-2">
-                <i className="fa-solid fa-users text-gray-500 dark:text-gray-400"></i>
+              <h3 className="text-base font-bold text-gray-700 dark:text-gray-200 mb-3 flex items-center gap-2">
+                <i className="fa-solid fa-users text-blue-500"></i>
                 {t('สถิติแต่ละทีม')}
                 <span className="text-xs font-medium text-gray-400 dark:text-gray-500">{t('• วงกลม Win Rate')}</span>
               </h3>
@@ -1500,15 +1499,15 @@ export default function Home() {
                   summaryTeams.map((team) => (
                       <div
                         key={team.name}
-                        className={`relative rounded-xl p-4 transition-colors overflow-hidden ${hudSkin.card}`}
+                        className="relative bg-white ring-1 ring-gray-200 rounded-2xl p-4 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition overflow-hidden dark:bg-gray-800 dark:ring-gray-700"
                       >
                         {/* อินโฟกราฟิก: วงกลม Win Rate */}
                         <div className="flex items-center gap-3 mb-3">
-                          <span className={`w-11 h-11 rounded-lg flex items-center justify-center shrink-0 ${hudSkin.panelIcon}`}>
+                          <span className="w-11 h-11 rounded-xl bg-gradient-to-b from-slate-100 to-slate-200 dark:from-gray-700 dark:to-gray-800 flex items-center justify-center shrink-0">
                             <TeamPlayersAvatar players={teamPlayersMap[team.name]} name={team.name} size={32} />
                           </span>
                           <div className="min-w-0">
-                            <h4 className="font-semibold text-gray-800 dark:text-gray-100 text-base leading-tight truncate">
+                            <h4 className="font-extrabold text-gray-800 dark:text-gray-100 text-base leading-tight truncate">
                               {team.name}
                             </h4>
                             <p className="text-xs text-gray-400 mt-0.5">{t('แข่งทั้งหมด {n} แมตช์', { n: team.played })}</p>
@@ -1525,12 +1524,12 @@ export default function Home() {
                           </div>
                           <div className="flex-1 grid grid-cols-2 gap-2 text-center">
                             <div className="bg-emerald-50 ring-1 ring-emerald-100 text-emerald-700 rounded-xl py-2 dark:bg-emerald-950/60 dark:ring-emerald-900 dark:text-emerald-300">
-                              <div className="text-xs">{t('ชนะ')}</div>
-                              <div className="font-semibold text-lg leading-tight tabular-nums">{team.win}</div>
+                              <div className="text-[11px]">{t('ชนะ')}</div>
+                              <div className="font-extrabold text-lg leading-tight">{team.win}</div>
                             </div>
                             <div className="bg-rose-50 ring-1 ring-rose-100 text-rose-600 rounded-xl py-2 dark:bg-rose-950/50 dark:ring-rose-900 dark:text-rose-300">
-                              <div className="text-xs">{t('แพ้')}</div>
-                              <div className="font-semibold text-lg leading-tight tabular-nums">{team.lose}</div>
+                              <div className="text-[11px]">{t('แพ้')}</div>
+                              <div className="font-extrabold text-lg leading-tight">{team.lose}</div>
                             </div>
                           </div>
                         </div>
@@ -1542,13 +1541,13 @@ export default function Home() {
 
             {/* ประวัติการแข่งขัน */}
             <section>
-              <h3 className="text-base font-semibold text-gray-700 dark:text-gray-200 mb-3 flex items-center gap-2">
-                <i className="fa-solid fa-clock-rotate-left text-gray-500 dark:text-gray-400"></i>
+              <h3 className="text-base font-bold text-gray-700 dark:text-gray-200 mb-3 flex items-center gap-2">
+                <i className="fa-solid fa-clock-rotate-left text-blue-500"></i>
                 {t('ประวัติการแข่งขัน (Match History)')}
               </h3>
-              <div className={`overflow-x-auto rounded-xl ${hudSkin.card}`}>
+              <div className="overflow-x-auto ring-1 ring-gray-200 rounded-2xl dark:ring-gray-700">
                 <table className="w-full text-sm text-left">
-                  <thead className={`text-xs font-medium ${hudSkin.chip}`}>
+                  <thead className="bg-gray-50 text-gray-500 text-xs font-semibold dark:bg-gray-800/80 dark:text-gray-400">
                     <tr>
                       <th className="p-3">{t('แมตช์')}</th>
                       <th className="p-3">{t('วันที่')}</th>
@@ -1581,10 +1580,10 @@ export default function Home() {
 
                         return (
                           <tr key={m.id} className="hover:bg-gray-50/70 dark:hover:bg-gray-800/60">
-                            <td className="p-3 text-center font-medium tabular-nums text-gray-400">#{m.id}</td>
+                            <td className="p-3 text-center font-bold text-gray-400">#{m.id}</td>
                             <td className="p-3 text-center">
-                              <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-medium whitespace-nowrap ${hudSkin.chip}`}>
-                                <i className="fa-regular fa-calendar-days text-xs"></i>
+                              <span className="inline-flex items-center gap-1.5 bg-blue-50 text-blue-700 ring-1 ring-blue-100 px-2 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap dark:bg-blue-950/70 dark:text-blue-300 dark:ring-blue-900">
+                                <i className="fa-regular fa-calendar-days text-[10px]"></i>
                                 {formatMatchDate(m.date, lang)}
                               </span>
                             </td>
@@ -1600,7 +1599,7 @@ export default function Home() {
                                 {m.teamA}
                               </span>
                             </td>
-                            <td className="p-3 text-center font-semibold tabular-nums text-gray-700 dark:text-gray-200">
+                            <td className="p-3 text-center font-extrabold tracking-widest text-gray-700 dark:text-gray-200">
                               {m.scoreA} - {m.scoreB}
                             </td>
                             <td className={`p-3 text-left ${bClass}`}>
@@ -1621,7 +1620,7 @@ export default function Home() {
           </div>
 
           {/* ท้ายโมดอล */}
-          <div className={`px-5 py-4 border-t border-gray-200 flex justify-end ${hudSkin.page}`}>
+          <div className="px-5 py-4 border-t border-gray-100 bg-gray-50 flex justify-end dark:border-gray-800 dark:bg-gray-800/60">
             <button
               onClick={() => setModalOpen(false)}
               className="bg-gray-600 hover:bg-gray-700 text-white px-5 py-2 rounded-xl font-semibold shadow transition"
@@ -1640,7 +1639,6 @@ export default function Home() {
         playerName={pickerSlot ? slotStateMap[pickerSlot].name : ''}
         currentId={pickerSlot ? skinIdBySlot[pickerSlot] : ''}
         excludeIds={pickerExcludeIds}
-        hudSkin={hudSkin}
         onPick={pickCharacter}
         onClose={() => setPickerSlot(null)}
       />
@@ -1660,7 +1658,6 @@ export default function Home() {
         currentShoeId={reelSlot ? gearIdBySlot[reelSlot].shoeId : 's1'}
         coins={reelSlot ? profileOf(slotStateMap[reelSlot])?.coins ?? 0 : 0}
         unlockedIds={reelSlot ? profileOf(slotStateMap[reelSlot])?.owned ?? [] : []}
-        hudSkin={hudSkin}
         onPick={pickGear}
         onLockedPick={lockedGearPick}
         onOpenShop={() => {
@@ -1693,7 +1690,6 @@ export default function Home() {
         playerName={shopFor ?? ''}
         coins={shopFor ? players.find((p) => p.name === shopFor)?.coins ?? 0 : 0}
         unlockedIds={shopFor ? players.find((p) => p.name === shopFor)?.owned ?? [] : []}
-        skin={hudSkin}
         onBuy={buyGear}
         onClose={() => setShopFor(null)}
       />

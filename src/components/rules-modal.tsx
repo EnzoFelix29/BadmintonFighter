@@ -31,13 +31,13 @@ export function RulesModal({
         onClick={(e) => e.stopPropagation()}
       >
         {/* หัวโมดอล */}
-        <div className={`flex justify-between items-center px-5 py-4 border-b border-gray-200 ${skin.page}`}>
+        <div className="flex justify-between items-center px-5 py-4 border-b border-gray-100 dark:border-gray-800 bg-gradient-to-r from-amber-50 via-white to-white dark:from-gray-800 dark:via-gray-900 dark:to-gray-900">
           <div className="flex items-center gap-3 min-w-0">
-            <span className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${skin.panelIcon}`}>
+            <span className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 text-white flex items-center justify-center text-lg shadow-lg shadow-amber-500/25 shrink-0">
               <i className="fa-solid fa-scale-balanced"></i>
             </span>
             <div className="min-w-0">
-              <h2 className={`text-lg font-semibold leading-tight ${skin.heading}`}>
+              <h2 className="text-lg font-extrabold text-gray-800 dark:text-gray-100 leading-tight">
                 {t('กฎกติกา & วิธีได้เหรียญ')}
               </h2>
               <p className="text-xs text-gray-400">
@@ -48,7 +48,7 @@ export function RulesModal({
           <button
             onClick={onClose}
             aria-label={t('ปิดหน้าต่าง')}
-            className={`w-9 h-9 rounded-lg transition-colors flex items-center justify-center shrink-0 ${skin.chip}`}
+            className="w-9 h-9 rounded-xl text-gray-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/60 transition flex items-center justify-center shrink-0"
           >
             <i className="fa-solid fa-xmark text-lg"></i>
           </button>
@@ -57,7 +57,7 @@ export function RulesModal({
         {/* เนื้อหา */}
         <div className="p-5 space-y-4 text-sm">
           <section>
-            <h3 className={`font-semibold mb-2 flex items-center gap-2 ${skin.heading}`}>
+            <h3 className="font-bold text-gray-700 dark:text-gray-200 mb-2 flex items-center gap-2">
               <i className="fa-solid fa-coins text-amber-500"></i>
               {t('วิธีได้เหรียญ (รายบุคคล)')}
             </h3>
@@ -94,11 +94,11 @@ export function RulesModal({
           </section>
 
           <section>
-            <h3 className={`font-semibold mb-2 flex items-center gap-2 ${skin.heading}`}>
-              <i className={`fa-solid fa-flag ${skin.nameA}`}></i>
+            <h3 className="font-bold text-gray-700 dark:text-gray-200 mb-2 flex items-center gap-2">
+              <i className="fa-solid fa-flag text-blue-500"></i>
               {t('กฎการกรอกแต้ม')}
             </h3>
-            <div className={`rounded-lg px-3 py-2.5 ${skin.chip}`}>
+            <div className="bg-blue-50 ring-1 ring-blue-100 rounded-xl px-3 py-2.5 text-gray-700 dark:bg-blue-950/40 dark:ring-blue-900 dark:text-gray-200">
               {t('แต้มที่กรอก')}
               <b>{t('ห้ามเกิน')}</b>
               {t('จำนวนแต้มที่เลือก (เกมละ')} <b>15</b> {t('หรือ')} <b>21</b>{' '}
@@ -107,8 +107,8 @@ export function RulesModal({
           </section>
 
           <section>
-            <h3 className={`font-semibold mb-2 flex items-center gap-2 ${skin.heading}`}>
-              <ShuttlecockIcon className={`w-4 h-4 ${skin.nameA}`} />
+            <h3 className="font-bold text-gray-700 dark:text-gray-200 mb-2 flex items-center gap-2">
+              <ShuttlecockIcon className="w-4 h-4 text-rose-500" />
               {t('จับเหรียญเสิร์ฟก่อน')}
             </h3>
             <div className="bg-gray-50 ring-1 ring-gray-100 rounded-xl px-3 py-2.5 text-gray-700 dark:bg-gray-800/60 dark:ring-gray-700 dark:text-gray-200">
@@ -120,11 +120,11 @@ export function RulesModal({
           </section>
 
           <section>
-            <h3 className={`font-semibold mb-2 flex items-center gap-2 ${skin.heading}`}>
-              <i className={`fa-solid fa-utensils ${skin.nameA}`}></i>
+            <h3 className="font-bold text-gray-700 dark:text-gray-200 mb-2 flex items-center gap-2">
+              <i className="fa-solid fa-utensils text-amber-500"></i>
               {t('สุ่มเมนูอาหารหลังตีแบต (ลูกเล่น)')}
             </h3>
-            <div className={`rounded-lg px-3 py-2.5 ${skin.chip}`}>
+            <div className="bg-amber-50 ring-1 ring-amber-100 rounded-xl px-3 py-2.5 text-gray-700 dark:bg-amber-950/40 dark:ring-amber-900 dark:text-gray-200">
               {t('บันทึกผลแข่งเสร็จ กดปุ่ม')} <b>{t('“สุ่มเมนูอาหาร”')}</b>{' '}
               {t('บน HUD เพื่อสุ่มเมนูได้เลย — มี 6 เมนู ออกตามโอกาส: ข้าวต้ม ข้างทาง')} <b>45%</b>{' '}
               {t('• ชาบู ชาใจ')} <b>15%</b> {t('• สเต็ก ลุงวอ')} <b>15%</b>{' '}
@@ -135,10 +135,10 @@ export function RulesModal({
         </div>
 
         {/* ท้ายโมดอล */}
-        <div className={`px-5 py-4 border-t border-gray-200 flex justify-end ${skin.page}`}>
+        <div className="px-5 py-4 border-t border-gray-100 bg-gray-50 flex justify-end dark:border-gray-800 dark:bg-gray-800/60">
           <button
             onClick={onClose}
-            className={`${skin.btn} px-5 py-2 font-medium transition-colors`}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-xl font-semibold shadow transition"
           >
             {t('รับทราบ')}
           </button>
