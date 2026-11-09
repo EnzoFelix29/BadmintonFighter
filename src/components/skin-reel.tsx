@@ -14,6 +14,7 @@ import { GearPixel } from './gear-pixel';
 import { ShuttlecockIcon } from './shuttlecock-icon';
 import { PixelAvatar } from './pixel-avatar';
 import type { Skin } from '@/lib/characters';
+import type { HudSkin } from '@/lib/hud-skins';
 
 const STEP = 64; // ความกว้างไอเทม (56px) + ช่องไฟ (8px)
 const COPIES = 3; // จำนวนสำเนาแถบสกิน (หมุนวนได้ไม่รู้จบ)
@@ -28,6 +29,7 @@ function ReelStrip({
   onPick,
   onLockedPick,
   onTick,
+  hudSkin,
 }: {
   label: string;
   icon: ReactNode;
@@ -37,6 +39,7 @@ function ReelStrip({
   onPick: (g: GearSkin) => void;
   onLockedPick: (g: GearSkin) => void;
   onTick: () => void;
+  hudSkin: HudSkin;
 }) {
   const { t } = useLang();
   const base = Math.max(0, items.findIndex((g) => g.id === currentId));
@@ -119,7 +122,7 @@ function ReelStrip({
           type="button"
           onClick={spin}
           disabled={spinning}
-          className="text-xs font-bold px-3 py-1.5 rounded-lg bg-gradient-to-r from-amber-400 to-orange-500 text-white shadow-md shadow-orange-500/20 transition hover:brightness-110 active:scale-95 disabled:opacity-60 disabled:cursor-wait flex items-center gap-1.5"
+          className={`text-xs font-bold px-3 py-1.5 rounded-lg transition active:scale-95 disabled:opacity-60 disabled:cursor-wait flex items-center gap-1.5 ${hudSkin.btn}`}
         >
           <i className={`fa-solid ${spinning ? 'fa-arrows-spin fa-spin' : 'fa-dice'}`}></i>
           {spinning ? t('กำลังหมุน') : t('สุ่ม')}
@@ -131,7 +134,7 @@ function ReelStrip({
           onClick={() => nudge(-1)}
           disabled={spinning}
           aria-label={t('{label} ก่อนหน้า', { label })}
-          className="shrink-0 w-8 rounded-xl bg-gray-100 hover:bg-blue-100 text-gray-500 hover:text-blue-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-blue-950 transition disabled:opacity-40 flex items-center justify-center"
+          className={`shrink-0 w-8 rounded-xl transition disabled:opacity-40 flex items-center justify-center ${hudSkin.chip}`}
         >
           <i className="fa-solid fa-chevron-left text-xs"></i>
         </button>
@@ -161,10 +164,10 @@ function ReelStrip({
                     aria-pressed={active}
                     className={`relative shrink-0 w-14 h-14 rounded-xl flex items-center justify-center transition ring-1 ${
                       active
-                        ? 'ring-2 ring-blue-500 bg-gradient-to-b from-slate-100 to-slate-200 dark:from-gray-700 dark:to-gray-800 scale-105 shadow-md shadow-blue-500/10'
+                        ? `${hudSkin.card} ring-2 scale-105`
                         : locked
-                          ? 'opacity-50 grayscale bg-gradient-to-b from-slate-100 to-slate-200 cursor-pointer dark:from-gray-700 dark:to-gray-800'
-                          : 'bg-gradient-to-b from-slate-100 to-slate-200 hover:ring-blue-300 dark:from-gray-700 dark:to-gray-800 dark:hover:ring-blue-700'
+                          ? `${hudSkin.panelIcon} opacity-50 grayscale cursor-pointer`
+                          : hudSkin.panelIcon
                     }`}
                   >
                     <GearPixel gear={g} size={38} />
@@ -184,7 +187,7 @@ function ReelStrip({
           onClick={() => nudge(1)}
           disabled={spinning}
           aria-label={t('{label} ถัดไป', { label })}
-          className="shrink-0 w-8 rounded-xl bg-gray-100 hover:bg-blue-100 text-gray-500 hover:text-blue-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-blue-950 transition disabled:opacity-40 flex items-center justify-center"
+          className={`shrink-0 w-8 rounded-xl transition disabled:opacity-40 flex items-center justify-center ${hudSkin.chip}`}
         >
           <i className="fa-solid fa-chevron-right text-xs"></i>
         </button>
@@ -210,6 +213,7 @@ export function SkinReel({
   onOpenShop,
   onClose,
   onTick,
+  hudSkin,
 }: {
   open: boolean;
   slotLabel: string;
@@ -224,6 +228,7 @@ export function SkinReel({
   onOpenShop: () => void;
   onClose: () => void;
   onTick: () => void;
+  hudSkin: HudSkin;
 }) {
   const { t } = useLang();
   if (!open) return null;
@@ -237,17 +242,17 @@ export function SkinReel({
       onClick={onClose}
     >
       <div
-        className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden ring-1 ring-gray-200/70 dark:ring-gray-700/60"
+        className={`${hudSkin.modalCard} w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden ring-1`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* หัวโมดอล */}
-        <div className="flex justify-between items-center px-5 py-4 border-b border-gray-100 dark:border-gray-800 bg-gradient-to-r from-amber-50 via-white to-white dark:from-gray-800 dark:via-gray-900 dark:to-gray-900">
+        <div className={`flex justify-between items-center px-5 py-4 border-b ${hudSkin.page}`}>
           <div className="flex items-center gap-3 min-w-0">
-            <span className="w-11 h-11 rounded-xl bg-gradient-to-b from-slate-100 to-slate-200 dark:from-gray-700 dark:to-gray-800 flex items-center justify-center shrink-0 ring-1 ring-gray-200 dark:ring-gray-700">
+            <span className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${hudSkin.panelIcon}`}>
               {skin && <PixelAvatar skin={skin} size={32} />}
             </span>
             <div className="min-w-0">
-              <h2 className="text-lg font-extrabold text-gray-800 dark:text-gray-100 leading-tight">
+              <h2 className={`text-lg font-bold leading-tight ${hudSkin.heading}`}>
                 {t('ตู้ Reel — {name}', { name: playerName })}
               </h2>
               <p className="text-xs text-gray-400 truncate">
@@ -257,7 +262,7 @@ export function SkinReel({
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <span
-              className="bg-amber-100 text-amber-700 ring-1 ring-amber-200 dark:bg-amber-950/70 dark:text-amber-300 dark:ring-amber-900 px-2.5 py-1.5 rounded-xl text-sm font-extrabold flex items-center gap-1.5"
+              className={`px-2.5 py-1.5 rounded-xl text-sm font-bold flex items-center gap-1.5 ${hudSkin.coin}`}
               title={t('เหรียญสะสมของ {name}', { name: playerName })}
             >
               <i className="fa-solid fa-coins"></i>
@@ -267,7 +272,7 @@ export function SkinReel({
               onClick={onOpenShop}
               aria-label={t('เปิดร้านค้าสกินของผู้เล่นนี้')}
               title={t('ร้านค้าสกินเท่ห์ — ปลดล็อคด้วยเหรียญของผู้เล่นคนนี้')}
-              className="bg-amber-400 hover:bg-amber-500 text-white px-3 py-2 rounded-xl font-bold transition text-xs flex items-center gap-1.5 shadow-md shadow-amber-500/20"
+              className={`px-3 py-2 rounded-xl font-bold transition text-xs flex items-center gap-1.5 ${hudSkin.btn}`}
             >
               <i className="fa-solid fa-bag-shopping"></i>
               <span className="hidden sm:inline">{t('ร้านค้า')}</span>
@@ -276,7 +281,7 @@ export function SkinReel({
           <button
             onClick={onClose}
             aria-label={t('ปิดตู้เปลี่ยนสกินอุปกรณ์')}
-            className="w-9 h-9 rounded-xl text-gray-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/60 transition flex items-center justify-center shrink-0"
+            className={`w-9 h-9 rounded-xl transition flex items-center justify-center shrink-0 ${hudSkin.chip}`}
           >
             <i className="fa-solid fa-xmark text-lg"></i>
           </button>
@@ -293,6 +298,7 @@ export function SkinReel({
             onPick={(g) => onPick('racket', g)}
             onLockedPick={onLockedPick}
             onTick={onTick}
+            hudSkin={hudSkin}
           />
           <ReelStrip
             label={t('รองเท้าแบด')}
@@ -303,6 +309,7 @@ export function SkinReel({
             onPick={(g) => onPick('shoe', g)}
             onLockedPick={onLockedPick}
             onTick={onTick}
+            hudSkin={hudSkin}
           />
           <p className="text-[11px] text-gray-400 flex items-center gap-1.5">
             <i className="fa-solid fa-circle-info"></i>
@@ -311,14 +318,14 @@ export function SkinReel({
         </div>
 
         {/* ท้ายโมดอล */}
-        <div className="px-5 py-3.5 border-t border-gray-100 bg-gray-50 dark:border-gray-800 dark:bg-gray-800/60 flex items-center justify-between gap-3">
+        <div className={`px-5 py-3.5 border-t flex items-center justify-between gap-3 ${hudSkin.page}`}>
           <p className="text-[11px] text-gray-400 hidden sm:block">
             <i className="fa-solid fa-shirt mr-1"></i>
             {t('สกินอุปกรณ์เป็นแค่ลุค — สถิติการเล่นไม่เปลี่ยนตาม')}
           </p>
           <button
             onClick={onClose}
-            className="ml-auto bg-gray-600 hover:bg-gray-700 text-white px-5 py-2 rounded-xl font-semibold shadow transition text-sm"
+            className={`ml-auto px-5 py-2 rounded-xl font-semibold transition text-sm ${hudSkin.chip}`}
           >
             {t('ยกเลิก')}
           </button>

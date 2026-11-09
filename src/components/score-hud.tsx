@@ -51,7 +51,7 @@ export function ScoreHud({
         </p>
         <div className="flex flex-wrap items-center gap-1.5">
           <div role="group" aria-label={t('เลือกสกิน HUD')} className="flex items-center gap-1.5">
-            <span className="text-[11px] font-medium text-gray-400">{t('สกิน HUD:')}</span>
+            <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{t('สกิน HUD:')}</span>
             <div className="relative inline-flex">
               <select
                 id="hud-skin-select"
@@ -63,7 +63,7 @@ export function ScoreHud({
                   count: HUD_SKINS.length,
                 })}
                 aria-label={t('เลือกสกิน HUD')}
-                className={`appearance-none pl-2.5 pr-7 py-1 rounded-lg text-xs font-medium cursor-pointer outline-none focus:ring-2 focus:ring-[#6a8b70] transition-colors ${skin.chip}`}
+                className={`appearance-none pl-2.5 pr-7 py-1 rounded-lg text-xs font-medium cursor-pointer outline-none focus:ring-2 focus:ring-current transition-colors ${skin.chip}`}
               >
                 {HUD_SKINS.map((s) => (
                   <option key={s.id} value={s.id}>
@@ -91,13 +91,13 @@ export function ScoreHud({
           {/* คะแนนสด */}
           <div className="flex items-center gap-2 sm:gap-3" aria-live="polite">
             <span
-              className={`text-3xl sm:text-4xl font-semibold tabular-nums leading-none ${skin.score} ${skin.scoreA ?? ''}`}
+              className={`text-3xl sm:text-4xl font-semibold tabular-nums leading-none ${skin.scoreA ?? skin.score}`}
             >
               {a}
             </span>
             <span className={`text-2xl font-medium ${skin.colon}`}>:</span>
             <span
-              className={`text-3xl sm:text-4xl font-semibold tabular-nums leading-none ${skin.score} ${skin.scoreB ?? ''}`}
+              className={`text-3xl sm:text-4xl font-semibold tabular-nums leading-none ${skin.scoreB ?? skin.score}`}
             >
               {b}
             </span>
@@ -148,7 +148,7 @@ export function ScoreHud({
               title={t(
                 'จับเหรียญเลือกทีมเสิร์ฟก่อน — popup เหรียญเด้งกลางจอ (หัว = ทีม A, ก้อย = ทีม B)'
               )}
-              className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition active:scale-95 disabled:opacity-60 cursor-pointer ${skin.flipBtn}`}
+              className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors active:scale-[0.98] disabled:opacity-60 cursor-pointer ${skin.flipBtn}`}
             >
               <span
                 aria-hidden="true"
@@ -171,7 +171,7 @@ export function ScoreHud({
               title={t(
                 'สุ่มเมนูอาหารหลังตีแบต — สล็อต 6 เมนูตามโอกาส 45/15/15/10/10/5 (เด้งกลางจอ)'
               )}
-              className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition active:scale-95 cursor-pointer ${skin.flipBtn}`}
+              className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors active:scale-[0.98] cursor-pointer ${skin.flipBtn}`}
             >
               <span aria-hidden="true" className="w-7 h-7 flex items-center justify-center">
                 <PixelFoodArt menu="congee" className="h-full w-full" />

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { SKINS, type Gender, type Skin } from '@/lib/characters';
 import { useLang } from '@/lib/i18n';
+import type { HudSkin } from '@/lib/hud-skins';
 import { PixelAvatar } from './pixel-avatar';
 
 type Tab = 'all' | Gender;
@@ -17,6 +18,7 @@ export function CharacterPicker({
   playerName,
   currentId,
   excludeIds,
+  hudSkin,
   onPick,
   onClose,
 }: {
@@ -25,6 +27,7 @@ export function CharacterPicker({
   playerName: string; // ชื่อผู้เล่นเจ้าของสกิน (สกินจะถูกบันทึกเป็นค่าเริ่มต้นของคนนี้)
   currentId: string;
   excludeIds: string[];
+  hudSkin: HudSkin;
   onPick: (skin: Skin) => void;
   onClose: () => void;
 }) {
@@ -46,23 +49,19 @@ export function CharacterPicker({
       onClick={onClose}
     >
       <div
-        className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[88vh] flex flex-col overflow-hidden ring-1 ring-gray-200/70 dark:ring-gray-700/60"
+        className={`${hudSkin.modalCard} w-full max-w-2xl max-h-[88vh] flex flex-col overflow-hidden ring-1`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* หัวโมดอล */}
-        <div className="flex justify-between items-center px-5 py-4 border-b border-gray-100 dark:border-gray-800 bg-gradient-to-r from-blue-50 via-white to-white dark:from-gray-800 dark:via-gray-900 dark:to-gray-900">
+        <div className={`flex justify-between items-center px-5 py-4 border-b ${hudSkin.page}`}>
           <div className="flex items-center gap-3 min-w-0">
             <span
-              className={`w-10 h-10 rounded-xl text-white flex items-center justify-center font-extrabold shadow-lg shrink-0 ${
-                isA
-                  ? 'bg-gradient-to-br from-blue-600 to-sky-500 shadow-blue-600/25'
-                  : 'bg-gradient-to-br from-rose-600 to-pink-500 shadow-rose-600/25'
-              }`}
+              className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold shrink-0 ${isA ? hudSkin.nameA : hudSkin.nameB}`}
             >
               {slot}
             </span>
             <div className="min-w-0">
-              <h2 className="text-lg font-extrabold text-gray-800 dark:text-gray-100 leading-tight truncate">
+              <h2 className={`text-lg font-bold leading-tight truncate ${hudSkin.heading}`}>
                 {t('เลือกสกินตัวละคร — {name}', {
                   name: playerName || t('ทีม {team} • ผู้เล่น {no}', { team: slot[0], no: playerNo }),
                 })}
@@ -75,7 +74,7 @@ export function CharacterPicker({
           <button
             onClick={onClose}
             aria-label={t('ปิดหน้าต่างเลือกตัวละคร')}
-            className="w-9 h-9 rounded-xl text-gray-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/60 transition flex items-center justify-center shrink-0"
+            className={`w-9 h-9 rounded-xl transition flex items-center justify-center shrink-0 ${hudSkin.chip}`}
           >
             <i className="fa-solid fa-xmark text-lg"></i>
           </button>
@@ -95,8 +94,8 @@ export function CharacterPicker({
               onClick={() => setTab(t.key)}
               className={`px-3.5 py-1.5 rounded-full text-sm font-bold transition ring-1 ${
                 tab === t.key
-                  ? 'bg-blue-600 text-white ring-blue-600 shadow-md shadow-blue-600/25'
-                  : 'bg-gray-50 text-gray-500 ring-gray-200 hover:bg-gray-100 dark:bg-gray-800 dark:text-gray-300 dark:ring-gray-700 dark:hover:bg-gray-700'
+                  ? `${hudSkin.btn} ${hudSkin.border}`
+                  : hudSkin.chip
               }`}
             >
               <i className={`fa-solid ${t.icon} mr-1.5`}></i>
@@ -124,14 +123,14 @@ export function CharacterPicker({
                   aria-pressed={active}
                   className={`relative flex flex-col items-center gap-1 rounded-2xl p-2.5 pt-3 transition ring-1 ${
                     taken
-                      ? 'opacity-35 cursor-not-allowed ring-gray-200 bg-gray-50 dark:ring-gray-800 dark:bg-gray-800/40'
+                      ? 'opacity-35 cursor-not-allowed'
                       : active
-                        ? 'ring-2 ring-blue-500 bg-blue-50 dark:bg-blue-950/60 dark:ring-blue-400 shadow-md shadow-blue-500/10'
-                        : 'ring-gray-200 bg-white hover:ring-blue-300 hover:bg-blue-50/50 hover:-translate-y-0.5 dark:bg-gray-800 dark:ring-gray-700 dark:hover:ring-blue-700 dark:hover:bg-blue-950/40'
+                        ? `${hudSkin.card} ring-2`
+                        : `${hudSkin.card} hover:-translate-y-0.5`
                   }`}
                 >
                   {active && (
-                    <span className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-blue-600 text-white text-[10px] flex items-center justify-center shadow">
+                    <span className={`absolute top-1.5 right-1.5 w-5 h-5 rounded-full text-white text-[10px] flex items-center justify-center ${hudSkin.btn}`}>
                       <i className="fa-solid fa-check"></i>
                     </span>
                   )}
@@ -140,7 +139,7 @@ export function CharacterPicker({
                       <i className="fa-solid fa-xmark"></i>
                     </span>
                   )}
-                  <span className="rounded-xl bg-gradient-to-b from-slate-100 to-slate-200 dark:from-gray-700 dark:to-gray-800 px-3.5 py-2">
+                  <span className={`rounded-xl px-3.5 py-2 ${hudSkin.panelIcon}`}>
                     <PixelAvatar skin={skin} size={50} />
                   </span>
                 </button>
@@ -150,14 +149,14 @@ export function CharacterPicker({
         </div>
 
         {/* ท้ายโมดอล */}
-        <div className="px-5 py-3.5 border-t border-gray-100 bg-gray-50 dark:border-gray-800 dark:bg-gray-800/60 flex items-center justify-between gap-3">
+        <div className={`px-5 py-3.5 border-t flex items-center justify-between gap-3 ${hudSkin.page}`}>
           <p className="text-[11px] text-gray-400 hidden sm:block">
             <i className="fa-solid fa-circle-info mr-1"></i>
             {t('สกินเดียวกันใช้ได้คนละ 1 คนต่อแมตช์ — เลือกเลย ไม่ต้องใส่รหัส')}
           </p>
           <button
             onClick={onClose}
-            className="ml-auto bg-gray-600 hover:bg-gray-700 text-white px-5 py-2 rounded-xl font-semibold shadow transition text-sm"
+            className={`ml-auto px-5 py-2 rounded-xl font-semibold transition text-sm ${hudSkin.chip}`}
           >
             {t('ยกเลิก')}
           </button>
