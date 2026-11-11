@@ -256,7 +256,7 @@ export default function Home() {
   const [foodDisplay, setFoodDisplay] = useState<FoodMenuId>('congee'); // เมนูที่โชว์ในช่องสล็อตขณะวน
   const [foodResult, setFoodResult] = useState<FoodMenu | null>(null);
   const foodTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  // ลูกเล่นหลังตีแบตอีก 4 อย่าง: คิดตังค่าสนาม / มินิเกมจระเข้กดนิ้ว / มินิเกม HI-LO / มินิเกมดีโน่รัน
+  // ลูกเล่นหลังตีแบต 4 อย่าง: คิดตังค่าสนาม / มินิเกมจระเข้กดนิ้ว / มินิเกม HI-LO / มินิเกมดีโน่รัน
   const [feeOpen, setFeeOpen] = useState(false);
   const [crocOpen, setCrocOpen] = useState(false);
   const [hiloOpen, setHiloOpen] = useState(false);
@@ -840,6 +840,21 @@ export default function Home() {
   const summaryTeams: RankedTeam[] = Object.values(teamStats)
     .map((t) => ({ ...t, winRate: (t.win / t.played) * 100 }))
     .sort((a, b) => b.winRate - a.winRate);
+
+  // สถิติชนะต่อเนื่อง (Win Streak): นับชนะติดกันจากแมตช์ล่าสุดย้อนหลัง จนเจอแมตช์ที่ทีมนั้นแพ้
+  const streakTeams: { team: RankedTeam; streak: number }[] = summaryTeams
+    .map((t) => {
+      let streak = 0;
+      for (let i = matches.length - 1; i >= 0; i--) {
+        const m = matches[i];
+        if (m.teamA !== t.name && m.teamB !== t.name) continue; // ทีมนี้ไม่ได้ลงแมตช์นี้ — ข้าม ไม่ตัด streak
+        const winner = m.scoreA > m.scoreB ? m.teamA : m.teamB;
+        if (winner === t.name) streak++;
+        else break; // เจอแมตช์ที่ตัวเองแพ้ — หยุดนับ
+      }
+      return { team: t, streak };
+    })
+    .sort((a, b) => b.streak - a.streak || b.team.winRate - a.team.winRate);
 
   // โปรไฟล์ + ตัวละครและอุปกรณ์ของทุกสล็อต (ดึงจากโปรไฟล์ผู้เล่นที่เลือก)
   const profA1 = profileOf(slotA1);
@@ -1434,6 +1449,13 @@ export default function Home() {
         </aside>
       </main>
 
+      {/* ===== Footer เครดิตผู้พัฒนา ===== */}
+      <footer className="pb-6 pt-2 text-center select-none">
+        <p className="text-[11px] font-bold tracking-[0.25em] text-gray-400 dark:text-gray-500">
+          DEVELOPED BY KITTIN.P
+        </p>
+      </footer>
+
       {/* ===== Modal สรุปภาพรวม ===== */}
       <div
         id="summaryModal"
@@ -1534,6 +1556,55 @@ export default function Home() {
                           </div>
                         </div>
                       </div>
+                  ))
+                )}
+              </div>
+            </section>
+
+            {/* สถิติชนะต่อเนื่อง (Win Streak) — นับชนะติดกันจากแมตช์ล่าสุด */}
+            <section>
+              <h3 className="text-base font-bold text-gray-700 dark:text-gray-200 mb-3 flex items-center gap-2">
+                <i className="fa-solid fa-fire text-orange-500"></i>
+                {t('ชนะต่อเนื่อง (Win Streak)')}
+                <span className="text-xs font-medium text-gray-400 dark:text-gray-500">{t('• นับจากแมตช์ล่าสุด')}</span>
+              </h3>
+              <div className={`grid grid-cols-1 gap-3 ${disp === 'landscape' ? 'md:grid-cols-2 lg:grid-cols-3' : 'sm:grid-cols-2'}`}>
+                {streakTeams.length === 0 ? (
+                  <div className="col-span-full text-center py-8 text-gray-400 border-2 border-dashed border-gray-200 rounded-2xl dark:border-gray-700">
+                    <i className="fa-solid fa-fire-flame-curved text-2xl mb-2 block"></i>
+                    {t('ยังไม่มีข้อมูลสถิติ')}
+                  </div>
+                ) : (
+                  streakTeams.map(({ team, streak }) => (
+                    <div
+                      key={team.name}
+                      className={`flex items-center gap-3 rounded-2xl p-3 ring-1 shadow-sm transition hover:shadow-md hover:-translate-y-0.5 ${
+                        streak >= 2
+                          ? 'bg-gradient-to-r from-orange-50 to-amber-50 ring-orange-200 dark:from-orange-950/50 dark:to-amber-950/40 dark:ring-orange-900'
+                          : 'bg-white ring-gray-200 dark:bg-gray-800 dark:ring-gray-700'
+                      }`}
+                    >
+                      <span className="w-10 h-10 rounded-xl bg-gradient-to-b from-slate-100 to-slate-200 dark:from-gray-700 dark:to-gray-800 flex items-center justify-center shrink-0">
+                        <TeamPlayersAvatar players={teamPlayersMap[team.name]} name={team.name} size={30} />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <h4 className="font-extrabold text-gray-800 dark:text-gray-100 text-sm leading-tight truncate">
+                          {team.name}
+                        </h4>
+                        <p className="text-[11px] text-gray-400 mt-0.5">{t('แข่งทั้งหมด {n} แมตช์', { n: team.played })}</p>
+                      </div>
+                      <div className="text-center shrink-0 w-14">
+                        <div
+                          className={`font-extrabold text-2xl leading-none ${
+                            streak >= 2 ? 'text-orange-500' : 'text-gray-400 dark:text-gray-500'
+                          }`}
+                        >
+                          {streak >= 2 && <i className="fa-solid fa-fire text-sm mr-0.5" aria-hidden="true"></i>}
+                          {streak}
+                        </div>
+                        <div className="text-[10px] text-gray-400 mt-1">{t('ชนะติดต่อกัน')}</div>
+                      </div>
+                    </div>
                   ))
                 )}
               </div>
@@ -1746,6 +1817,7 @@ export default function Home() {
         sound={playSound}
         onClose={() => setDinoOpen(false)}
       />
+
     </div>
   );
 }

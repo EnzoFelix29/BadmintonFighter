@@ -16,13 +16,13 @@ type SoundFn = (kind: 'success' | 'error' | 'open' | 'clear' | 'select' | 'tick'
 // ============================================================
 // มินิเกมจระเข้กดนิ้ว (Crocodile Dentist แบบ 8-บิต)
 // อ้างอิงของเล่นจระเข้กัดนิ้ว: ตัวเขียว ปากอ้ากว้าง ช่องปากแดง
-// ฟันขาว 2 แถว (บน 6 + ล่าง 6) ผลัดกันกดทีละซี่
+// ฟันขาว 2 แถว (บน 8 + ล่าง 8 = รวม 16 ซี่) ผลัดกันกดทีละซี่
 // กดฟันแล้วมีมือพิกเซลกด + เสียง "Ka!" สีสันตามรูปต้นแบบ
 // ฟันเสียสุ่ม 1 ซี่ ใครกดโดน = ปากกระแทกปิด + CHOMP! + ตาหลับ
 // ============================================================
 
-const TOP_TEETH = 6; // ฟันแถวบน (ห้อยลง)
-const BOTTOM_TEETH = 6; // ฟันแถวล่าง (ตั้งขึ้น)
+const TOP_TEETH = 8; // ฟันแถวบน (ห้อยลง)
+const BOTTOM_TEETH = 8; // ฟันแถวล่าง (ตั้งขึ้น)
 const TEETH = TOP_TEETH + BOTTOM_TEETH;
 const PLAYER_CHOICES = [2, 3, 4, 5, 6, 8];
 // สีตัวอักษร Ka! ตามรูปต้นแบบ: น้ำเงิน เขียว ส้ม เหลืองเขียว
@@ -153,7 +153,7 @@ export function CrocGameModal({
     const isPressed = pressed.includes(i);
     const isHandHere = hand?.tooth === i;
     return (
-      <div key={i} className="relative w-[15%] h-full">
+      <div key={i} className="relative w-[10.5%] h-full">
         <button
           type="button"
           onClick={() => pressTooth(i)}
@@ -295,11 +295,11 @@ export function CrocGameModal({
               <div className="absolute inset-x-0 top-0 h-[7px] bg-[#6d1414]" aria-hidden="true" />
               {/* ลิ้นพิกเซลกลางปาก */}
               <PixelTongue className="absolute left-1/2 -translate-x-1/2 bottom-[34%] w-[64px] h-auto z-[5]" />
-              {/* ฟันแถวบน 6 ซี่ (ห้อยลง) */}
+              {/* ฟันแถวบน 8 ซี่ (ห้อยลง) */}
               <div className="absolute top-0 left-[6%] right-[6%] h-[36%] flex justify-between z-10">
                 {Array.from({ length: TOP_TEETH }).map((_, k) => renderTooth(k, 'top'))}
               </div>
-              {/* ฟันแถวล่าง 6 ซี่ (ตั้งขึ้น) */}
+              {/* ฟันแถวล่าง 8 ซี่ (ตั้งขึ้น) */}
               <div className="absolute bottom-0 left-[6%] right-[6%] h-[36%] flex justify-between z-10">
                 {Array.from({ length: BOTTOM_TEETH }).map((_, k) =>
                   renderTooth(TOP_TEETH + k, 'bottom'),
