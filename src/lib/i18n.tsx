@@ -81,8 +81,8 @@ const EN: Record<string, string> = {
 
   // ===== ลูกเล่นหลังตีแบต =====
   'ลูกเล่นหลังตีแบต': 'Post-game Fun',
-  'คิดตังค่าสนาม • จระเข้กดนิ้ว • HI-LO • ดีโน่รัน':
-    'Court fee • Croc dentist • HI-LO • Dino run',
+  'คิดตังค่าสนาม • จระเข้กดนิ้ว • HI-LO • ดีโน่รัน • แพคแมน':
+    'Court fee • Croc dentist • HI-LO • Dino run • Pac-Man',
   'คิดตังค่าสนาม': 'Court Fee',
   'คิดตังค่าสนาม — ใส่ราคารวมค่าคอร์ทและจำนวนคนที่จะหาร':
     'Court fee calculator — enter the total court cost and number of people to split',
@@ -368,6 +368,26 @@ const EN: Record<string, string> = {
   'เริ่มเกมใหม่': 'Restart Game',
   'เริ่มเกม': 'Start Game',
   'เริ่มใหม่': 'Restart',
+
+  // ===== มินิเกมแพคแมน (Pac-Man) =====
+  'แพคแมน': 'Pac-Man',
+  'แพคแมน — เก็บจุดหลบผี': 'Pac-Man — eat dots, dodge ghosts',
+  'มินิเกมแพคแมน Pac-Man': 'Pac-Man mini game',
+  'มินิเกมแพคแมน Pac-Man — ควบคุมแพคแมนเก็บจุดทุกจุด หลบผี จับจุดพลังเพื่อกลับกินผี เก็บคะแนนสูงสุด':
+    'Pac-Man mini game — steer Pac-Man to eat every dot, dodge ghosts, grab power pellets to eat them back for the high score',
+  'ลูกศร / WASD = เคลื่อนที่ • เก็บจุดให้ครบ = ผ่านด่าน • จุดพลังใหญ่ = กลับกินผีได้':
+    'Arrows / WASD = move • eat every dot to clear the level • big power dots let you eat ghosts back',
+  'พื้นที่เล่นเกมแพคแมน — ปัดหรือใช้ปุ่มลูกศรเพื่อเคลื่อนที่': 'Pac-Man play area — swipe or use arrow buttons to move',
+  'ปุ่มทิศทางเคลื่อนแพคแมน': 'D-pad to move Pac-Man',
+  'เคลื่อนขึ้น': 'Move up',
+  'เคลื่อนลง': 'Move down',
+  'เคลื่อนซ้าย': 'Move left',
+  'เคลื่อนขวา': 'Move right',
+  'ชีวิต: {n}': 'Lives: {n}',
+  'กดปุ่มลูกศรหรือแตะเพื่อเริ่ม': 'Press an arrow or tap to start',
+  'เก็บจุดให้ครบ หลบผีให้ไว!': 'Eat all the dots — dodge those ghosts!',
+  'ผ่านด่าน! +{n}': 'Level cleared! +{n}',
+  'เริ่มเกมแพคแมน': 'Start Pac-Man',
 
   // ===== มินิเกมจระเข้กดนิ้ว =====
   'มินิเกมจระเข้กดนิ้ว': 'Crocodile dentist mini game',

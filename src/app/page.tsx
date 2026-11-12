@@ -25,6 +25,7 @@ import { CourtFeeModal } from '@/components/court-fee-modal';
 import { CrocGameModal } from '@/components/croc-game-modal';
 import { HiLoGameModal } from '@/components/hilo-game-modal';
 import { DinoGameModal } from '@/components/dino-game-modal';
+import { PacmanGameModal } from '@/components/pacman-game-modal';
 import { RulesModal } from '@/components/rules-modal';
 import { ShuttlecockIcon } from '@/components/shuttlecock-icon';
 import { Podium } from '@/components/podium';
@@ -256,11 +257,12 @@ export default function Home() {
   const [foodDisplay, setFoodDisplay] = useState<FoodMenuId>('congee'); // เมนูที่โชว์ในช่องสล็อตขณะวน
   const [foodResult, setFoodResult] = useState<FoodMenu | null>(null);
   const foodTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  // ลูกเล่นหลังตีแบต 4 อย่าง: คิดตังค่าสนาม / มินิเกมจระเข้กดนิ้ว / มินิเกม HI-LO / มินิเกมดีโน่รัน
+  // ลูกเล่นหลังตีแบต 5 อย่าง: คิดตังค่าสนาม / มินิเกมจระเข้กดนิ้ว / มินิเกม HI-LO / มินิเกมดีโน่รัน / มินิเกมแพคแมน
   const [feeOpen, setFeeOpen] = useState(false);
   const [crocOpen, setCrocOpen] = useState(false);
   const [hiloOpen, setHiloOpen] = useState(false);
   const [dinoOpen, setDinoOpen] = useState(false);
+  const [pacOpen, setPacOpen] = useState(false); // มินิเกมแพคแมน — เก็บจุดหลบผี
   const [rulesOpen, setRulesOpen] = useState(false); // Modal กฎกติกา & วิธีได้เหรียญ
   // โหมดการแสดงผลของจอ: 'portrait' = แนวตั้ง | 'landscape' = แนวนอน
   const [disp, setDisp] = useState<'portrait' | 'landscape'>('portrait');
@@ -1331,10 +1333,10 @@ export default function Home() {
               </span>
               <div>
                 <h3 className={`${hudSkin.heading} text-sm font-bold leading-tight`}>{t('ลูกเล่นหลังตีแบต')}</h3>
-                <p className="text-[11px] text-gray-400">{t('คิดตังค่าสนาม • จระเข้กดนิ้ว • HI-LO • ดีโน่รัน')}</p>
+                <p className="text-[11px] text-gray-400">{t('คิดตังค่าสนาม • จระเข้กดนิ้ว • HI-LO • ดีโน่รัน • แพคแมน')}</p>
               </div>
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
               <button
                 type="button"
                 onClick={() => {
@@ -1382,6 +1384,18 @@ export default function Home() {
               >
                 <span className="text-lg leading-none" aria-hidden="true">🦖</span>
                 {t('ดีโน่รัน')}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setPacOpen(true);
+                  playSound('open');
+                }}
+                title={t('มินิเกมแพคแมน Pac-Man — ควบคุมแพคแมนเก็บจุดทุกจุด หลบผี จับจุดพลังเพื่อกลับกินผี เก็บคะแนนสูงสุด')}
+                className={`${hudSkin.btn} px-1 py-2.5 flex flex-col items-center gap-1 text-[11px] font-bold leading-tight text-center transition active:scale-[0.97] cursor-pointer`}
+              >
+                <span className="text-lg leading-none" aria-hidden="true">🟡</span>
+                {t('แพคแมน')}
               </button>
             </div>
           </div>
@@ -1816,6 +1830,14 @@ export default function Home() {
         skin={hudSkin}
         sound={playSound}
         onClose={() => setDinoOpen(false)}
+      />
+
+      {/* ===== มินิเกมแพคแมน (Pac-Man) ===== */}
+      <PacmanGameModal
+        open={pacOpen}
+        skin={hudSkin}
+        sound={playSound}
+        onClose={() => setPacOpen(false)}
       />
 
     </div>
