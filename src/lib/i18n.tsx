@@ -158,6 +158,11 @@ const EN: Record<string, string> = {
   'เหวี่ยงเหรียญใหม่': 'Flip the coin again',
   'ปิด': 'Close',
 
+  // ===== ปุ่มลับ Visitor Dashboard =====
+  'พื้นที่ Developer': 'Developer Area',
+  'ใส่รหัสลับ 10 หลักเพื่อเข้า Visitor Dashboard': 'Enter the 10-digit secret code to open the Visitor Dashboard',
+  'รหัสไม่ถูกต้อง': 'Incorrect code',
+
   // ===== Popup สุ่มเมนูอาหาร =====
   'สุ่มเมนูอาหารหลังตีแบต': 'Post-game food roulette',
   'สุ่มเมนูหลังตีแบต': 'Post-game Food Roulette',

@@ -273,11 +273,51 @@ export default function Home() {
   const [alertMsg, setAlertMsg] = useState<{ msg: string; isError: boolean } | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+
+  // ===== ปุ่มลับ Visitor Dashboard — แตะเครดิต 5 ครั้ง + รหัส 10 หลัก =====
+  const [devCodeOpen, setDevCodeOpen] = useState(false);
+  const [devCode, setDevCode] = useState('');
+  const [devCodeErr, setDevCodeErr] = useState(false);
+  const creditTaps = useRef(0);
+  const creditTapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const [soundMuted, setSoundMuted] = useState(false);
   const alertTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const exportableRef = useRef<HTMLDivElement>(null);
   const soundMutedRef = useRef(false);
   const audioCtxRef = useRef<AudioContext | null>(null);
+
+  // ===== ปุ่มลับ: แตะคำว่า DEVELOPED BY KITTIN.P 5 ครั้ง (เว้นไม่เกิน 2 วิ) =====
+  const handleCreditTap = () => {
+    creditTaps.current += 1;
+    if (creditTapTimer.current) clearTimeout(creditTapTimer.current);
+    creditTapTimer.current = setTimeout(() => { creditTaps.current = 0; }, 2000);
+    if (creditTaps.current >= 5) {
+      creditTaps.current = 0;
+      setDevCode('');
+      setDevCodeErr(false);
+      setDevCodeOpen(true);
+    }
+  };
+
+  // ===== ตรวจรหัสลับ 10 หลัก → ปลดล็อกแล้วพาไป /visitors =====
+  const DEV_PASSCODE = '0990909963';
+  const submitDevCode = (val: string) => {
+    if (val === DEV_PASSCODE) {
+      try { localStorage.setItem('badminton_dev_unlock', '1'); } catch { /* ข้าม */ }
+      setDevCodeOpen(false);
+      window.location.href = '/visitors';
+    } else {
+      setDevCodeErr(true);
+      setDevCode('');
+      setTimeout(() => setDevCodeErr(false), 1400);
+    }
+  };
+  const handleDevCodeChange = (v: string) => {
+    const digits = v.replace(/\D/g, '').slice(0, 10);
+    setDevCode(digits);
+    if (digits.length === 10) submitDevCode(digits);
+  };
 
   // Theme (light/dark)
   const { resolvedTheme, setTheme } = useTheme();
@@ -1464,18 +1504,60 @@ export default function Home() {
         </aside>
       </main>
 
-      {/* ===== Footer เครดิตผู้พัฒนา ===== */}
+      {/* ===== Footer เครดิตผู้พัฒนา (แตะ 5 ครั้ง = ปุ่มลับ Visitor Dashboard) ===== */}
       <footer className="pb-6 pt-2 text-center select-none">
-        <p className="text-[11px] font-bold tracking-[0.25em] text-gray-400 dark:text-gray-500">
+        <p
+          onClick={handleCreditTap}
+          title=""
+          className="cursor-default text-[11px] font-bold tracking-[0.25em] text-gray-400 dark:text-gray-500"
+        >
           DEVELOPED BY KITTIN.P
         </p>
-        <a
-          href="/visitors"
-          className="mt-1 inline-flex items-center gap-1.5 text-[10px] font-semibold text-gray-300 transition-colors hover:text-emerald-500 dark:text-gray-600 dark:hover:text-emerald-400"
-        >
-          🛰️ Visitor Dashboard
-        </a>
       </footer>
+
+      {/* ===== Modal รหัสลับ Visitor Dashboard ===== */}
+      <div
+        className={`fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-[60] justify-center items-center p-4 ${
+          devCodeOpen ? 'flex' : 'hidden'
+        }`}
+        onClick={() => setDevCodeOpen(false)}
+      >
+        <div
+          className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-xs p-6 text-center"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="text-4xl">🛰️</div>
+          <h3 className="mt-2 font-extrabold text-gray-800 dark:text-gray-100">{t('พื้นที่ Developer')}</h3>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            {t('ใส่รหัสลับ 10 หลักเพื่อเข้า Visitor Dashboard')}
+          </p>
+          <input
+            type="password"
+            inputMode="numeric"
+            autoComplete="off"
+            autoFocus
+            value={devCode}
+            onChange={(e) => handleDevCodeChange(e.target.value)}
+            placeholder="••••••••••"
+            maxLength={10}
+            className={`mt-4 w-full rounded-xl border-2 bg-white dark:bg-gray-900 px-4 py-2.5 text-center text-lg font-bold tracking-[0.35em] outline-none transition-colors ${
+              devCodeErr
+                ? 'border-red-400 text-red-500'
+                : 'border-gray-200 dark:border-gray-600 text-gray-800 dark:text-gray-100 focus:border-emerald-400'
+            }`}
+          />
+          <p className={`mt-2 text-xs font-bold ${devCodeErr ? 'text-red-500' : 'text-transparent'}`}>
+            {t('รหัสไม่ถูกต้อง')}
+          </p>
+          <button
+            type="button"
+            onClick={() => setDevCodeOpen(false)}
+            className="mt-1 w-full rounded-xl bg-gray-100 dark:bg-gray-700 py-2 text-sm font-bold text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+          >
+            {t('ปิด')}
+          </button>
+        </div>
+      </div>
 
       {/* ===== Modal สรุปภาพรวม ===== */}
       <div

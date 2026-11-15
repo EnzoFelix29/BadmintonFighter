@@ -4,7 +4,7 @@
 // Visitor Dashboard — หน้า developer ดูสถิติผู้เข้าใช้งาน
 // อยู่ในแอปหลักเป็น route /visitors → deploy ขึ้น Vercel ได้เลย
 // อ่านข้อมูลจาก GET /api/visitors (เหมือนเดิม แค่ไม่ต้องรัน :3030)
-// อัปเดตอัตโนมัติทุก 5 วินาที + กดปุ่มรีเฟรชเองได้
+// อัปเดตอัตโนมัติทุก 10 วินาที + กดปุ่มรีเฟรชเองได้
 // ============================================================
 
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -43,6 +43,9 @@ interface ApiResp {
     platform: string;
   };
 }
+
+const DEV_PASSCODE = '0990909963'; // รหัสลับ 10 หลัก
+const UNLOCK_KEY = 'badminton_dev_unlock';
 
 const CSS = `
   :root { --bg:#f6f8fa; --card:#fff; --border:#e5e7eb; --text:#1f2937; --muted:#6b7280; --faint:#9ca3af;
@@ -121,6 +124,22 @@ const CSS = `
     max-height:340px; overflow:auto; font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; }
   .vd .err { background:var(--down-bg); border:1px solid var(--down-border); color:var(--down); border-radius:12px;
     padding:10px 14px; font-size:12px; font-weight:700; }
+  /* หน้าล็อกรหัส */
+  .vd .lockWrap { min-height:82vh; display:flex; align-items:center; justify-content:center; }
+  .vd .lockCard { background:var(--card); border:1px solid var(--border); border-radius:16px; padding:30px 24px;
+    max-width:340px; width:100%; text-align:center; box-shadow:0 4px 20px rgba(0,0,0,.06); }
+  .vd .lockCard .lockIcon { font-size:40px; }
+  .vd .lockCard h2 { font-size:16px; font-weight:800; margin:8px 0 2px; }
+  .vd .lockCard p { font-size:12px; color:var(--muted); margin:0 0 14px; }
+  .vd .lockInput { width:100%; border:1px solid var(--border); border-radius:10px; padding:10px 14px; font-size:18px;
+    letter-spacing:.3em; text-align:center; outline:none; background:#fff; color:var(--text);
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; transition:.15s; }
+  .vd .lockInput:focus { border-color:var(--ok); box-shadow:0 0 0 3px rgba(5,150,105,.15); }
+  .vd .lockInput.err { border-color:var(--down); box-shadow:0 0 0 3px rgba(220,38,38,.15); animation:vdShake .3s; }
+  .vd .lockErr { color:var(--down); font-size:11px; font-weight:700; margin-top:8px; min-height:14px; }
+  .vd .lockBack { display:inline-block; margin-top:12px; font-size:12px; color:var(--muted); text-decoration:none; font-weight:600; }
+  .vd .lockBack:hover { color:var(--sky); }
+  @keyframes vdShake { 0%,100% { transform:translateX(0); } 25% { transform:translateX(-6px); } 75% { transform:translateX(6px); } }
   .vd footer { text-align:center; color:var(--faint); font-size:11px; padding:6px 0 10px; }
   .vd footer .mono { font-size:10px; }
   @media (max-width:560px) {
@@ -158,6 +177,38 @@ export default function VisitorsPage() {
   const [copied, setCopied] = useState(false);
   const dataRef = useRef<ApiResp | null>(null);
 
+  // ===== ประตูล็อกด้วยรหัส 10 หลัก — null = กำลังอ่านสถานะจาก localStorage =====
+  const [unlocked, setUnlocked] = useState<boolean | null>(null);
+  const [lockCode, setLockCode] = useState('');
+  const [lockErr, setLockErr] = useState(false);
+  useEffect(() => {
+    let ok = false;
+    try { ok = localStorage.getItem(UNLOCK_KEY) === '1'; } catch { /* ข้าม */ }
+    setUnlocked(ok);
+  }, []);
+
+  const submitLockCode = (val: string) => {
+    if (val === DEV_PASSCODE) {
+      try { localStorage.setItem(UNLOCK_KEY, '1'); } catch { /* ข้าม */ }
+      setUnlocked(true);
+    } else {
+      setLockErr(true);
+      setLockCode('');
+      setTimeout(() => setLockErr(false), 1400);
+    }
+  };
+  const handleLockCodeChange = (v: string) => {
+    const digits = v.replace(/\D/g, '').slice(0, 10);
+    setLockCode(digits);
+    if (digits.length === 10) submitLockCode(digits);
+  };
+  const lockAgain = () => {
+    try { localStorage.removeItem(UNLOCK_KEY); } catch { /* ข้าม */ }
+    setLockCode('');
+    setUnlocked(false);
+  };
+
+
   const load = useCallback(async () => {
     const t0 = performance.now();
     try {
@@ -170,13 +221,13 @@ export default function VisitorsPage() {
       setMs(Math.round(performance.now() - t0));
       setUpdated(new Date().toLocaleTimeString('th-TH', { hour12: false }));
     } catch {
-      setErr('เชื่อมต่อ /api/visitors ไม่สำเร็จ — จะลองใหม่ใน 5 วินาทีเอง');
+      setErr('เชื่อมต่อ /api/visitors ไม่สำเร็จ — จะลองใหม่ใน 10 วินาทีเอง');
     }
   }, []);
 
   useEffect(() => {
     load();
-    const iv = setInterval(load, 5000);
+    const iv = setInterval(load, 10_000);
     return () => clearInterval(iv);
   }, [load]);
 
@@ -197,6 +248,53 @@ export default function VisitorsPage() {
     }
   };
 
+  // ===== ยังตรวจสถานะล็อกไม่เสร็จ — แสดงฉากว่างกันกระพริบ =====
+  if (unlocked === null) {
+    return (
+      <div className="vd">
+        <style dangerouslySetInnerHTML={{ __html: CSS }} />
+      </div>
+    );
+  }
+
+  // ===== หน้าล็อก — ยังไม่ปลดล็อก (หรือกดล็อกเอง) ให้ใส่รหัส 10 หลักก่อน =====
+  if (!unlocked) {
+    return (
+      <div className="vd">
+        <style dangerouslySetInnerHTML={{ __html: CSS }} />
+        <div className="vd-wrap">
+          <div className="lockWrap">
+            <div className="lockCard">
+              <div className="lockIcon">🔒</div>
+              <h2>Visitor Dashboard</h2>
+              <p>พื้นที่สำหรับ developer — ใส่รหัสลับ 10 หลักเพื่อปลดล็อก</p>
+              <input
+                type="password"
+                inputMode="numeric"
+                autoComplete="off"
+                autoFocus
+                value={lockCode}
+                onChange={(e) => handleLockCodeChange(e.target.value)}
+                placeholder="••••••••••"
+                maxLength={10}
+                className={`lockInput ${lockErr ? 'err' : ''}`}
+              />
+              <div className="lockErr">{lockErr ? 'รหัสไม่ถูกต้อง ลองอีกครั้ง' : ''}</div>
+              <Link className="lockBack" href="/">← กลับหน้านับแต้ม</Link>
+            </div>
+          </div>
+          <footer>
+            Visitor Dashboard • route /visitors (ในแอปหลัก) • เข้าถึงได้ทั้ง localhost และ Vercel<br />
+            <span className="muted">
+              หน้าเว็บส่ง heartbeat ทุก 20 วิ → /api/visitors → หน้านี้อ่านแสดงผล อัปเดตทุก 10 วิ
+              (บน Vercel serverless เก็บข้อมูลในหน่วยความจำ — รีสตาร์ท instance เมื่อไรสถิติรีเซ็ต)
+            </span>
+          </footer>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="vd">
       <style dangerouslySetInnerHTML={{ __html: CSS }} />
@@ -215,6 +313,7 @@ export default function VisitorsPage() {
               </p>
             </div>
             <div className="brandbtns">
+              <button type="button" onClick={lockAgain} title="ล็อกแดชบอร์ด" aria-label="ล็อก">🔒</button>
               <Link href="/" aria-label="กลับหน้าหลัก">← นับแต้ม</Link>
               <button type="button" onClick={load} title="รีเฟรชเดี๋ยวนี้" aria-label="รีเฟรช">⟳</button>
             </div>
@@ -337,7 +436,7 @@ export default function VisitorsPage() {
         <footer>
           Visitor Dashboard • route /visitors (ในแอปหลัก) • เข้าถึงได้ทั้ง localhost และ Vercel<br />
           <span className="muted">
-            หน้าเว็บส่ง heartbeat ทุก 20 วิ → /api/visitors → หน้านี้อ่านแสดงผล อัปเดตทุก 5 วิ
+            หน้าเว็บส่ง heartbeat ทุก 20 วิ → /api/visitors → หน้านี้อ่านแสดงผล อัปเดตทุก 10 วิ
             (บน Vercel serverless เก็บข้อมูลในหน่วยความจำ — รีสตาร์ท instance เมื่อไรสถิติรีเซ็ต)
           </span>
         </footer>
