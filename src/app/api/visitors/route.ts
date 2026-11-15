@@ -2,7 +2,10 @@
 // API นับผู้เข้าใช้งานเว็บ — /api/visitors
 // - POST  : heartbeat จากหน้าเว็บ (ทุก 20 วินาที) → บันทึกการเข้าใช้
 // - GET   : ดึงสถิติทั้งหมด (ออนไลน์/ยอดเข้าชม/รายวัน/รายชื่อ/สถานะเซิร์ฟเวอร์)
-// เก็บข้อมูลลงไฟล์ db/visitors.json (อยู่รอดแม้รีสตาร์ทเซิร์ฟเวอร์)
+// เก็บข้อมูล 2 ชั้น:
+//   1) แรม (globalThis) — รอดตลอดช่วง instance มีชีวิต ใช้ได้แม้บน Vercel
+//   2) ไฟล์ db/visitors.json — ถ้าเขียนได้ (เครื่อง/sandbox) ข้อมูลอยู่รอดแม้รีสตาร์ท
+//      บน Vercel serverless เขียนไฟล์ไม่ได้ → อยู่แค่ในแรม รีสตาร์ท instance = รีเซ็ต
 // นิยาม:
 //   "ออนไลน์"      = ส่ง heartbeat มาภายใน 60 วินาทีล่าสุด
 //   "เข้าชม 1 ครั้ง" = เปิดเซสชันใหม่ (ห่างหาย > 30 นาที หรือมาครั้งแรก)
@@ -48,26 +51,39 @@ function emptyData(): VisitorsData {
   return { visitors: {}, totalVisits: 0, daily: {} };
 }
 
+// แคชในหน่วยความจำระดับโปรเซส — สำคัญมากบน Vercel serverless เพราะเขียนไฟล์ไม่ได้
+// (ไฟล์จะโดนลบ/แก้ไม่ได้) ข้อมูลจึงต้องอยู่ในแรม รอดตลอดช่วง instance อุ่นเครื่อง
+const g = globalThis as unknown as { __visitorsMem?: VisitorsData };
+let memLoaded = false;
+
 function loadData(): VisitorsData {
+  if (memLoaded && g.__visitorsMem) return g.__visitorsMem;
+  let d = emptyData();
   try {
     const raw = fs.readFileSync(DATA_FILE, 'utf-8');
     const parsed = JSON.parse(raw) as Partial<VisitorsData>;
-    return {
+    d = {
       visitors: parsed.visitors ?? {},
       totalVisits: typeof parsed.totalVisits === 'number' ? parsed.totalVisits : 0,
       daily: parsed.daily ?? {},
     };
   } catch {
-    return emptyData();
+    // ไม่มีไฟล์/อ่านไม่ได้ (Vercel) — เริ่มว่าง ใช้แรมแทน
   }
+  g.__visitorsMem = d;
+  memLoaded = true;
+  return d;
 }
 
 function saveData(d: VisitorsData): void {
+  // บันทึกลงแรมก่อนเสมอ — ทำให้ serverless (Vercel) นับสถิติได้จริงขณะ instance ยังรัน
+  g.__visitorsMem = d;
+  memLoaded = true;
   try {
     fs.mkdirSync(DATA_DIR, { recursive: true });
     fs.writeFileSync(DATA_FILE, JSON.stringify(d, null, 1));
   } catch {
-    // เขียนไฟล์ไม่ได้ก็ข้าม (สถิติจะอยู่แค่ช่วงเซสชันนี้ ไม่มีผลต่อการใช้งาน)
+    // เขียนไฟล์ไม่ได้ (Vercel serverless) — มีแรมพอแล้ว ข้าม
   }
 }
 

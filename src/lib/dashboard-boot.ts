@@ -11,6 +11,9 @@
 let bootAttempted = false;
 
 export async function bootVisitorDashboard(): Promise<void> {
+  // บน Vercel serverless spawn เซิร์ฟเวอร์ยาว :3030 ไม่ได้ (และไม่จำเป็น —
+  // แดชบอร์ดย้ายเป็น route /visitors ในแอปหลักแล้ว) — ข้ามทันที
+  if (process.env.VERCEL) return;
   if (bootAttempted) return;
   bootAttempted = true;
 

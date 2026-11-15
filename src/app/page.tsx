@@ -1469,6 +1469,12 @@ export default function Home() {
         <p className="text-[11px] font-bold tracking-[0.25em] text-gray-400 dark:text-gray-500">
           DEVELOPED BY KITTIN.P
         </p>
+        <a
+          href="/visitors"
+          className="mt-1 inline-flex items-center gap-1.5 text-[10px] font-semibold text-gray-300 transition-colors hover:text-emerald-500 dark:text-gray-600 dark:hover:text-emerald-400"
+        >
+          🛰️ Visitor Dashboard
+        </a>
       </footer>
 
       {/* ===== Modal สรุปภาพรวม ===== */}
