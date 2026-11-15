@@ -44,8 +44,7 @@ interface ApiResp {
   };
 }
 
-const DEV_PASSCODE = '0990909963'; // รหัสลับ 10 หลัก
-const UNLOCK_KEY = 'badminton_dev_unlock';
+const UNLOCK_API = '/api/visitors/unlock'; // ตรวจรหัสฝั่งเซิร์ฟเวอร์ — รหัสไม่อยู่ในโค้ดหน้าเว็บ
 
 const CSS = `
   :root { --bg:#f6f8fa; --card:#fff; --border:#e5e7eb; --text:#1f2937; --muted:#6b7280; --faint:#9ca3af;
@@ -177,33 +176,37 @@ export default function VisitorsPage() {
   const [copied, setCopied] = useState(false);
   const dataRef = useRef<ApiResp | null>(null);
 
-  // ===== ประตูล็อกด้วยรหัส 10 หลัก — null = กำลังอ่านสถานะจาก localStorage =====
+  // ===== ประตูล็อกด้วยรหัส 10 หลัก — null = กำลังถามสถานะจากเซิร์ฟเวอร์ =====
   const [unlocked, setUnlocked] = useState<boolean | null>(null);
   const [lockCode, setLockCode] = useState('');
   const [lockErr, setLockErr] = useState(false);
-  useEffect(() => {
-    let ok = false;
-    try { ok = localStorage.getItem(UNLOCK_KEY) === '1'; } catch { /* ข้าม */ }
-    setUnlocked(ok);
-  }, []);
 
-  const submitLockCode = (val: string) => {
-    if (val === DEV_PASSCODE) {
-      try { localStorage.setItem(UNLOCK_KEY, '1'); } catch { /* ข้าม */ }
-      setUnlocked(true);
-    } else {
-      setLockErr(true);
-      setLockCode('');
-      setTimeout(() => setLockErr(false), 1400);
+  const submitLockCode = async (val: string) => {
+    try {
+      const res = await fetch(UNLOCK_API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: val }),
+      });
+      if (res.ok) {
+        setUnlocked(true);
+        load(); // ดึงข้อมูลทันทีหลังปลดล็อก
+        return;
+      }
+    } catch {
+      // เน็ตมีปัญหา — ตกไปแสดง error เหมือนรหัสผิด
     }
+    setLockErr(true);
+    setLockCode('');
+    setTimeout(() => setLockErr(false), 1400);
   };
   const handleLockCodeChange = (v: string) => {
     const digits = v.replace(/\D/g, '').slice(0, 10);
     setLockCode(digits);
-    if (digits.length === 10) submitLockCode(digits);
+    if (digits.length === 10) void submitLockCode(digits);
   };
-  const lockAgain = () => {
-    try { localStorage.removeItem(UNLOCK_KEY); } catch { /* ข้าม */ }
+  const lockAgain = async () => {
+    try { await fetch(UNLOCK_API, { method: 'DELETE' }); } catch { /* ข้าม */ }
     setLockCode('');
     setUnlocked(false);
   };
@@ -213,9 +216,16 @@ export default function VisitorsPage() {
     const t0 = performance.now();
     try {
       const res = await fetch('/api/visitors', { cache: 'no-store' });
+      if (res.status === 401) {
+        // ยังไม่ปลดล็อก (หรือถูกล็อกจากที่อื่น) — แสดงหน้าล็อก
+        setUnlocked(false);
+        setErr('');
+        return;
+      }
       const j = (await res.json()) as ApiResp;
       if (!j.ok) throw new Error('bad response');
       dataRef.current = j;
+      setUnlocked(true);
       setData(j);
       setErr('');
       setMs(Math.round(performance.now() - t0));

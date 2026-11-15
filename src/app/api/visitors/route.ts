@@ -14,6 +14,7 @@
 import fs from 'fs';
 import path from 'path';
 import { bootVisitorDashboard } from '@/lib/dashboard-boot';
+import { isUnlocked } from '@/lib/visitor-unlock';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -167,8 +168,13 @@ export async function POST(request: Request) {
   return Response.json({ ok: true, online: stats.online, totalVisits: stats.totalVisits });
 }
 
-// ---------- GET : สถิติทั้งหมดสำหรับหน้าแสดงผล ----------
-export async function GET() {
+// ---------- GET : สถิติทั้งหมดสำหรับหน้าแสดงผล (เฉพาะที่ปลดล็อกแล้ว) ----------
+export async function GET(request: Request) {
+  // ปกป้องข้อมูลสถิติ — ต้องมี cookie ปลดล็อกที่เซิร์ฟเวอร์ลงชื่อเท่านั้น
+  // (ใครยิง GET ตรง ๆ โดยไม่ใส่รหัสจะไม่ได้ข้อมูลอะไรเลย)
+  if (!isUnlocked(request)) {
+    return Response.json({ ok: false, error: 'locked' }, { status: 401 });
+  }
   // บูตแดชบอร์ด (:3030) ด้วยถ้ายังไม่รัน (กันกรณีไม่มี heartbeat เลย)
   void bootVisitorDashboard();
   const d = loadData();

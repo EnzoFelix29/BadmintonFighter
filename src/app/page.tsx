@@ -300,18 +300,26 @@ export default function Home() {
     }
   };
 
-  // ===== ตรวจรหัสลับ 10 หลัก → ปลดล็อกแล้วพาไป /visitors =====
-  const DEV_PASSCODE = '0990909963';
-  const submitDevCode = (val: string) => {
-    if (val === DEV_PASSCODE) {
-      try { localStorage.setItem('badminton_dev_unlock', '1'); } catch { /* ข้าม */ }
-      setDevCodeOpen(false);
-      window.location.href = '/visitors';
-    } else {
-      setDevCodeErr(true);
-      setDevCode('');
-      setTimeout(() => setDevCodeErr(false), 1400);
+  // ===== ตรวจรหัสลับ 10 หลัก "ฝั่งเซิร์ฟเวอร์" (/api/visitors/unlock) =====
+  // รหัสไม่ถูกฝังในโค้ดหน้าเว็บ — ใครเปิด DevTools อ่าน bundle จะหาไม่เจอ
+  const submitDevCode = async (val: string) => {
+    try {
+      const res = await fetch('/api/visitors/unlock', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: val }),
+      });
+      if (res.ok) {
+        setDevCodeOpen(false);
+        window.location.href = '/visitors';
+        return;
+      }
+    } catch {
+      // เน็ต/เซิร์ฟเวอร์มีปัญหา — ตกไปแสดง error เหมือนรหัสผิด
     }
+    setDevCodeErr(true);
+    setDevCode('');
+    setTimeout(() => setDevCodeErr(false), 1400);
   };
   const handleDevCodeChange = (v: string) => {
     const digits = v.replace(/\D/g, '').slice(0, 10);
