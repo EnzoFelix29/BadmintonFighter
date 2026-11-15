@@ -1,0 +1,400 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Visitor Dashboard — Dev</title>
+<style>
+  :root {
+    --bg: #f6f8fa; --card: #ffffff; --border: #e5e7eb;
+    --text: #1f2937; --muted: #6b7280; --faint: #9ca3af;
+    --ok: #059669; --ok-bg: #ecfdf5; --ok-border: #a7f3d0;
+    --down: #dc2626; --down-bg: #fef2f2; --down-border: #fecaca;
+    --amber: #d97706; --violet: #7c3aed; --sky: #0284c7;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: 'Segoe UI', system-ui, -apple-system, 'Noto Sans Thai', sans-serif;
+    font-size: 14px; line-height: 1.5; padding: 16px;
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
+  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-variant-numeric: tabular-nums; }
+  .muted { color: var(--muted); font-weight: 500; }
+
+  /* header */
+  header {
+    background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+    padding: 16px 18px; display: flex; flex-direction: column; gap: 10px;
+  }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .logo { font-size: 30px; }
+  h1 { font-size: 19px; font-weight: 800; display: flex; align-items: center; gap: 8px; }
+  .sub { color: var(--muted); font-size: 12px; margin-top: 2px; }
+  .brand button {
+    margin-left: auto; border: 1px solid var(--border); background: #fff; color: var(--muted);
+    width: 36px; height: 36px; border-radius: 10px; font-size: 15px; cursor: pointer; transition: .15s;
+  }
+  .brand button:hover { color: var(--ok); border-color: var(--ok); transform: rotate(20deg); }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip {
+    font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 999px;
+    background: #f3f4f6; border: 1px solid var(--border); color: var(--muted);
+    display: inline-flex; align-items: center; gap: 5px;
+  }
+  .chip.ok { background: var(--ok-bg); border-color: var(--ok-border); color: var(--ok); }
+  .chip.down { background: var(--down-bg); border-color: var(--down-border); color: var(--down); }
+  .chip .dot2 { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+
+  /* stat cards */
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
+  .card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 14px 16px;
+  }
+  .card .label { font-size: 11px; font-weight: 700; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+  .card .value { font-size: 34px; font-weight: 800; margin-top: 4px; }
+  .card .hint { font-size: 10px; color: var(--faint); margin-top: 2px; }
+  .card.online { background: var(--ok-bg); border-color: var(--ok-border); }
+  .card.online .label, .card.online .value { color: var(--ok); }
+  .pulse { position: relative; width: 9px; height: 9px; border-radius: 50%; background: var(--ok); }
+  .pulse::after {
+    content: ''; position: absolute; inset: -4px; border-radius: 50%;
+    background: rgba(5, 150, 105, .35); animation: ping 1.6s ease-out infinite;
+  }
+  @keyframes ping { 0% { transform: scale(.5); opacity: 1; } 100% { transform: scale(1.5); opacity: 0; } }
+  .c-emerald .value { color: var(--ok); } .c-amber .value { color: var(--amber); }
+  .c-violet .value { color: var(--violet); } .c-sky .value { color: var(--sky); }
+
+  /* panels */
+  .panel {
+    background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+    padding: 14px 18px 16px;
+  }
+  .panel h2 { font-size: 13px; font-weight: 800; margin-bottom: 10px; }
+
+  /* chart */
+  .chart { display: flex; align-items: flex-end; gap: 4px; height: 110px; padding-top: 6px; }
+  .barCol { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 3px; height: 100%; }
+  .barNum { font-size: 9px; font-weight: 800; color: var(--ok); }
+  .bar { width: 100%; border-radius: 6px 6px 0 0; background: linear-gradient(to top, #10b981, #6ee7b7); min-height: 3px; }
+  .bar.zero { background: #eef1f4; }
+  .chartLabels { display: flex; gap: 4px; margin-top: 5px; }
+  .chartLabels span { flex: 1; text-align: center; font-size: 8px; font-weight: 700; color: var(--faint); }
+
+  /* table */
+  .tableWrap { max-height: 360px; overflow: auto; border: 1px solid var(--border); border-radius: 10px; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  thead th {
+    position: sticky; top: 0; background: #f9fafb; color: var(--muted);
+    font-size: 10px; text-transform: uppercase; letter-spacing: .04em;
+    text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--border); white-space: nowrap;
+  }
+  tbody td { padding: 7px 12px; border-bottom: 1px solid #f1f3f5; white-space: nowrap; }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr.on { background: var(--ok-bg); }
+  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+  .dot.on { background: var(--ok); animation: none; }
+  .dot.off { background: #d1d5db; }
+  .lang { font-size: 10px; font-weight: 800; padding: 1px 6px; border-radius: 5px; }
+  .lang.TH { background: #fef3c7; color: #b45309; }
+  .lang.EN { background: #e0f2fe; color: #0369a1; }
+  .emptyRow { text-align: center; color: var(--faint); padding: 26px 0 !important; font-weight: 600; }
+
+  /* info panels */
+  .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 12px; }
+  .kv { display: flex; justify-content: space-between; gap: 10px; padding: 6px 0; border-bottom: 1px dashed #f1f3f5; font-size: 12px; }
+  .kv:last-child { border-bottom: none; }
+  .kv .k { color: var(--muted); font-weight: 600; }
+  .kv .v { font-weight: 700; text-align: right; }
+  .statusBig { font-size: 12px; font-weight: 800; padding: 3px 10px; border-radius: 999px; display: inline-block; }
+  .statusBig.up { background: var(--ok-bg); color: var(--ok); border: 1px solid var(--ok-border); }
+  .statusBig.down { background: var(--down-bg); color: var(--down); border: 1px solid var(--down-border); }
+
+  /* raw json */
+  details.raw summary {
+    cursor: pointer; font-size: 13px; font-weight: 800; list-style: none;
+    display: flex; align-items: center; gap: 8px;
+  }
+  details.raw summary::before { content: '▸'; transition: .15s; color: var(--faint); }
+  details.raw[open] summary::before { transform: rotate(90deg); }
+  details.raw summary button {
+    margin-left: auto; border: 1px solid var(--border); background: #fff; color: var(--muted);
+    font-size: 11px; font-weight: 700; padding: 4px 12px; border-radius: 8px; cursor: pointer;
+  }
+  details.raw summary button:hover { color: var(--ok); border-color: var(--ok); }
+  pre#rawJson {
+    margin-top: 10px; background: #0f172a; color: #a5f3fc; border-radius: 10px;
+    padding: 14px; font-size: 11px; max-height: 340px; overflow: auto;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+
+  .err {
+    background: var(--down-bg); border: 1px solid var(--down-border); color: var(--down);
+    border-radius: 12px; padding: 10px 14px; font-size: 12px; font-weight: 700;
+  }
+  .hidden { display: none; }
+  footer { text-align: center; color: var(--faint); font-size: 11px; padding: 6px 0 10px; }
+  footer .mono { font-size: 10px; }
+
+  @media (max-width: 560px) {
+    body { padding: 10px; }
+    .cards { grid-template-columns: 1fr 1fr; }
+    .card .value { font-size: 26px; }
+    .tableWrap { max-height: 300px; }
+    tbody td, thead th { padding: 6px 8px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="brand">
+      <span class="logo" aria-hidden="true">🛰️</span>
+      <div>
+        <h1>Visitor Dashboard <span class="chip dev" style="background:#fce7f3;border-color:#fbcfe8;color:#be185d;">dev</span></h1>
+        <p class="sub">แดชบอร์ดสำหรับ developer — สถิติผู้ใช้งานเว็บ badminton แยกออกมาต่างหาก แต่อ่านข้อมูลจากไฟล์เดียวกัน (db/visitors.json)</p>
+      </div>
+      <button id="refreshBtn" title="รีเฟรชเดี๋ยวนี้" aria-label="รีเฟรช">⟳</button>
+    </div>
+    <div class="chips" id="chips"><span class="chip">กำลังโหลด…</span></div>
+  </header>
+
+  <div id="errBanner" class="err hidden"></div>
+
+  <section class="cards" id="cards">
+    <div class="card"><div class="label">กำลังโหลด…</div></div>
+  </section>
+
+  <section class="panel">
+    <h2>📊 ยอดเข้าชมรายวัน <span class="muted">(14 วันล่าสุด • เขตเวลาไทย)</span></h2>
+    <div class="chart" id="chart"></div>
+    <div class="chartLabels" id="chartLabels"></div>
+  </section>
+
+  <section class="panel">
+    <h2>👥 รายชื่อผู้เข้าใช้ <span class="muted" id="visCount"></span></h2>
+    <div class="tableWrap">
+      <table>
+        <thead>
+          <tr>
+            <th>รหัสผู้ใช้</th><th>สถานะ</th><th>ภาษา</th><th>เข้าชม</th>
+            <th>หน้าจอ</th><th>ใช้ล่าสุด</th><th>เริ่มใช้ครั้งแรก</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="grid2">
+    <div class="panel">
+      <h2>🟢 Main app — badminton (:3000)</h2>
+      <div id="mainAppInfo"><span class="muted">กำลังโหลด…</span></div>
+    </div>
+    <div class="panel">
+      <h2>🟣 Mini service — dashboard (:3030)</h2>
+      <div id="selfInfo"><span class="muted">กำลังโหลด…</span></div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>🗄 ไฟล์ข้อมูลร่วม (จุดเชื่อมระหว่างสองแอป)</h2>
+    <div id="fileInfo"><span class="muted">กำลังโหลด…</span></div>
+  </section>
+
+  <details class="panel raw" id="rawPanel">
+    <summary>🧾 Raw JSON <button id="copyBtn" type="button">คัดลอก</button></summary>
+    <pre id="rawJson">—</pre>
+  </details>
+
+  <footer>
+    Visitor Dashboard • mini-services/visitor-dashboard • เข้าผ่าน <span class="mono">/?XTransformPort=3030</span><br>
+    <span class="muted">แอป badminton ส่ง heartbeat ทุก 20 วิ → ไฟล์ db/visitors.json → หน้านี้อ่านแสดงผล อัปเดตทุก 5 วิ</span>
+  </footer>
+</div>
+
+<script>
+'use strict';
+const $ = (id) => document.getElementById(id);
+let lastData = null;
+
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) =>
+  ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+function rel(ts) {
+  const d = Math.max(0, Math.floor((Date.now() - ts) / 1000));
+  if (d < 10) return 'เมื่อสักครู่';
+  if (d < 60) return d + ' วิที่แล้ว';
+  if (d < 3600) return Math.floor(d / 60) + ' นาทีที่แล้ว';
+  if (d < 86400) return Math.floor(d / 3600) + ' ชม.ที่แล้ว';
+  return Math.floor(d / 86400) + ' วันที่แล้ว';
+}
+
+function up(sec) {
+  sec = Math.floor(sec);
+  const d = Math.floor(sec / 86400), h = Math.floor((sec % 86400) / 3600),
+        m = Math.floor((sec % 3600) / 60), s = sec % 60;
+  if (d > 0) return d + ' ว ' + h + ' ชม';
+  if (h > 0) return h + ' ชม ' + m + ' น';
+  if (m > 0) return m + ' น ' + s + ' วิ';
+  return s + ' วิ';
+}
+
+function kv(k, v) {
+  return '<div class="kv"><span class="k">' + k + '</span><span class="v mono">' + v + '</span></div>';
+}
+
+function showError(msg) {
+  const el = $('errBanner');
+  el.textContent = '⚠ เชื่อมต่อ /api/stats ไม่สำเร็จ (' + msg + ') — mini service อาจกำลังรีสตาร์ท จะลองใหม่ใน 5 วินาทีเอง';
+  el.classList.remove('hidden');
+}
+
+async function load() {
+  const t0 = performance.now();
+  let data;
+  try {
+    const res = await fetch('/api/stats', { cache: 'no-store' });
+    data = await res.json();
+  } catch (e) {
+    showError(e && e.message ? e.message : e);
+    return;
+  }
+  $('errBanner').classList.add('hidden');
+  render(data, Math.round(performance.now() - t0));
+}
+
+function render(data, ms) {
+  lastData = data;
+  const s = data.stats;
+
+  // ----- chips -----
+  const mainChip = data.mainApp.up
+    ? '<span class="chip ok"><span class="dot2"></span>main app :3000 UP</span>'
+    : '<span class="chip down"><span class="dot2"></span>main app :3000 DOWN</span>';
+  const fileChip = data.file.exists
+    ? '<span class="chip">🗄 db/visitors.json • ' + data.file.sizeKB + ' KB</span>'
+    : '<span class="chip down">🗄 ยังไม่มีไฟล์ข้อมูล</span>';
+  const t = new Date().toLocaleTimeString('th-TH', { hour12: false });
+  $('chips').innerHTML =
+    mainChip + fileChip +
+    '<span class="chip">⟳ อัปเดต ' + t + ' • ' + ms + ' ms</span>';
+
+  // ----- stat cards -----
+  $('cards').innerHTML =
+    '<div class="card online"><div class="label"><span class="pulse"></span>ออนไลน์ตอนนี้</div>' +
+      '<div class="value mono">' + s.online + '</div><div class="hint">heartbeat ภายใน 60 วิ</div></div>' +
+    '<div class="card c-emerald"><div class="label">👁 ยอดเข้าชมทั้งหมด</div>' +
+      '<div class="value mono">' + s.totalVisits.toLocaleString() + '</div><div class="hint">นับเป็นเซสชัน (เว้น &gt;30 นาที = ครั้งใหม่)</div></div>' +
+    '<div class="card c-violet"><div class="label">🧑‍🤝‍🧑 ผู้เข้าชมไม่ซ้ำ</div>' +
+      '<div class="value mono">' + s.uniqueVisitors.toLocaleString() + '</div><div class="hint">นับจากรหัสผู้ใช้ใน localStorage</div></div>' +
+    '<div class="card c-amber"><div class="label">📅 เข้าชมวันนี้</div>' +
+      '<div class="value mono">' + s.todayVisits.toLocaleString() + '</div><div class="hint">นับเที่ยงคืนเวลาไทย (UTC+7)</div></div>';
+
+  // ----- chart 14 วัน -----
+  const days = Array.from({ length: 14 }, (_, i) =>
+    new Date(Date.now() + 7 * 3600000 - (13 - i) * 86400000).toISOString().slice(0, 10));
+  const counts = days.map((d) => {
+    const hit = s.daily.find((e) => e.day === d);
+    return hit ? hit.count : 0;
+  });
+  const max = Math.max(1, ...counts);
+  $('chart').innerHTML = days.map((d, i) => {
+    const c = counts[i];
+    return '<div class="barCol" title="' + d + ' • ' + c + ' ครั้ง">' +
+      (c > 0 ? '<span class="barNum">' + c + '</span>' : '') +
+      '<div class="bar' + (c > 0 ? '' : ' zero') + '" style="height:' +
+      (c > 0 ? Math.max(Math.round(c / max * 100), 6) : 4) + '%"></div></div>';
+  }).join('');
+  $('chartLabels').innerHTML = days.map((d) => '<span>' + d.slice(8) + '</span>').join('');
+
+  // ----- ตารางผู้ใช้ -----
+  $('visCount').textContent = '(' + s.visitors.length + ' คนล่าสุด • เรียงจากใช้ล่าสุด)';
+  if (!s.visitors.length) {
+    $('tbody').innerHTML = '<tr><td colspan="7" class="emptyRow">ยังไม่มีผู้เข้าใช้ — เปิดเว็บ badminton ในอีกแท็บเพื่อเริ่มนับ</td></tr>';
+  } else {
+    $('tbody').innerHTML = s.visitors.map((v) =>
+      '<tr class="' + (v.online ? 'on' : '') + '">' +
+      '<td class="mono">' + esc(v.id) + '</td>' +
+      '<td><span class="dot ' + (v.online ? 'on' : 'off') + '"></span>' + (v.online ? 'ออนไลน์' : 'ออฟไลน์') + '</td>' +
+      '<td><span class="lang ' + esc(String(v.lang).toUpperCase()) + '">' + esc(String(v.lang).toUpperCase()) + '</span></td>' +
+      '<td class="mono">' + v.visits + '</td>' +
+      '<td class="mono">' + esc(v.screen || '–') + '</td>' +
+      '<td>' + rel(v.lastSeen) + '</td>' +
+      '<td>' + rel(v.firstSeen) + '</td>' +
+      '</tr>').join('');
+  }
+
+  // ----- สถานะ main app -----
+  if (data.mainApp.up && data.mainApp.server) {
+    const sv = data.mainApp.server;
+    $('mainAppInfo').innerHTML =
+      '<span class="statusBig up">● UP</span>' + kv('รันมาแล้ว', up(Number(sv.uptime))) +
+      kv('หน่วยความจำ', sv.memoryMB + ' / ' + sv.rssMB + ' MB') +
+      kv('Node', esc(String(sv.nodeVersion))) +
+      kv('แพลตฟอร์ม', esc(String(sv.platform)));
+  } else {
+    $('mainAppInfo').innerHTML =
+      '<span class="statusBig down">● DOWN</span>' +
+      kv('สาเหตุ', esc(data.mainApp.error || 'unknown')) +
+      '<p class="hint" style="margin-top:8px;">แอป badminton (:3000) เข้าไม่ได้ — แดชบอร์ดยังอ่านข้อมูลจากไฟล์ได้ตามปกติ แต่จะไม่มี heartbeat ใหม่จนกว่าแอปจะกลับมา</p>';
+  }
+
+  // ----- สถานะ mini service -----
+  $('selfInfo').innerHTML =
+    '<span class="statusBig up">● RUNNING</span>' + kv('รันมาแล้ว', up(data.self.uptime)) +
+    kv('หน่วยความจำ', data.self.memoryMB + ' / ' + data.self.rssMB + ' MB') +
+    kv('Bun', esc(String(data.self.bunVersion))) +
+    kv('แพลตฟอร์ม', esc(String(data.self.platform)));
+
+  // ----- ไฟล์ข้อมูลร่วม -----
+  $('fileInfo').innerHTML = data.file.exists
+    ? kv('พาธ', 'db/visitors.json') + kv('ขนาด', data.file.sizeKB + ' KB') +
+      kv('เขียนล่าสุด', data.file.ageSec < 2 ? 'เมื่อสักครู่' : rel(Date.now() - data.file.ageSec * 1000)) +
+      '<p class="hint" style="margin-top:8px;">แอป badminton เขียนไฟล์นี้เมื่อมี heartbeat • หน้านี้อ่านเพื่อคำนวณสถิติ — สองแอปไม่ต้องรู้จักกัน แค่ใช้ไฟล์เดียวกัน</p>'
+    : '<p class="hint">ยังไม่มีไฟล์ db/visitors.json — จะถูกสร้างอัตโนมัติเมื่อมีคนเปิดเว็บ badminton</p>';
+
+  // ----- raw json -----
+  $('rawJson').textContent = JSON.stringify(data, null, 2);
+}
+
+$('refreshBtn').addEventListener('click', load);
+$('copyBtn').addEventListener('click', () => {
+  if (!lastData) return;
+  const text = JSON.stringify(lastData, null, 2);
+  const done = () => {
+    const b = $('copyBtn');
+    b.textContent = 'คัดลอกแล้ว ✓';
+    setTimeout(() => { b.textContent = 'คัดลอก'; }, 1500);
+  };
+  // ทางหลัก: Clipboard API (ต้องการ secure context) / ทางสำรอง: execCommand
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(done).catch(() => copyFallback(text, done));
+  } else {
+    copyFallback(text, done);
+  }
+});
+
+function copyFallback(text, done) {
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    done();
+  } catch (e) {
+    $('copyBtn').textContent = 'คัดลอกไม่สำเร็จ';
+    setTimeout(() => { $('copyBtn').textContent = 'คัดลอก'; }, 1500);
+  }
+}
+
+load();
+setInterval(load, 5000);
+</script>
+</body>
+</html>

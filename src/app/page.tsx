@@ -27,6 +27,7 @@ import { HiLoGameModal } from '@/components/hilo-game-modal';
 import { DinoGameModal } from '@/components/dino-game-modal';
 import { PacmanGameModal } from '@/components/pacman-game-modal';
 import { RulesModal } from '@/components/rules-modal';
+import { VisitorTracker } from '@/components/visitor-tracker';
 import { ShuttlecockIcon } from '@/components/shuttlecock-icon';
 import { Podium } from '@/components/podium';
 import { WinRateRing } from '@/components/win-rate-ring';
@@ -936,14 +937,14 @@ export default function Home() {
             </span>
             <div className="min-w-0">
               <h1 className="text-lg sm:text-xl font-extrabold tracking-tight truncate leading-tight">
-                {t('บันทึกสถิติแบดมินตัน')}
+                {t('นับแต้ม')}
               </h1>
               <p className="hidden sm:block text-[11px] sm:text-xs text-blue-100/90 font-medium leading-tight">
                 {t('ระบบเก็บสถิติการแข่งขัน • Badminton Stats')}
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 mx-auto sm:mx-0">
+          <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 mx-auto sm:mx-0">
             {/* ปุ่มสลับภาษา ไทย / English — อยู่บนสุดของหน้า (navbar) จำค่าไว้ใน localStorage */}
             <div
               role="group"
@@ -1839,6 +1840,11 @@ export default function Home() {
         sound={playSound}
         onClose={() => setPacOpen(false)}
       />
+
+      {/* ===== ระบบนับผู้เข้าใช้ — heartbeat ทุก 20 วินาที (ไม่มี UI)
+           ข้อมูลทั้งหมดไปโชว์ที่แดชบอร์ด developer แยกของ mini-services/visitor-dashboard
+           เข้าดูผ่าน /?XTransformPort=3030 ===== */}
+      <VisitorTracker />
 
     </div>
   );

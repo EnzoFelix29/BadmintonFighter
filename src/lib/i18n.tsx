@@ -24,7 +24,7 @@ export const LANG_KEY = 'badminton_lang';
 // พจนานุกรมอังกฤษ — key = ข้อความไทยต้นฉบับ (ตรงตัวทุกตัวอักษร รวมวรรค/เว้นวรรค)
 const EN: Record<string, string> = {
   // ===== Navbar / หน้าหลัก =====
-  'บันทึกสถิติแบดมินตัน': 'Badminton Stats Tracker',
+  'นับแต้ม': 'NUBTAM',
   'ระบบเก็บสถิติการแข่งขัน • Badminton Stats': 'Match statistics system • Badminton Stats',
   'แบดมินตัน': 'Badminton',
   'ผู้เล่น': 'Players',

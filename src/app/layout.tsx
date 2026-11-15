@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ระบบเก็บสถิติการแข่งขันแบดมินตัน | Badminton Stats",
+  title: "นับแต้ม | NUBTAM",
   description:
     "บันทึกผลการแข่งขันแบดมินตัน สรุปสถิติ Win Rate และประวัติการแข่งขันของแต่ละทีม — Badminton match tracker with live win-rate stats",
   icons: {
