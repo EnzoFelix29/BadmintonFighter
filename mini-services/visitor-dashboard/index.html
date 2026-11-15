@@ -255,7 +255,9 @@ async function load() {
   const t0 = performance.now();
   let data;
   try {
-    const res = await fetch('/api/stats', { cache: 'no-store' });
+    // แนบ location.search ทุกครั้ง — เมื่อเปิดผ่าน gateway /?XTransformPort=3030
+    // ทุก request ต้องมี param นี้ติดไปด้วย ไม่งั้น Caddy จะยิงไปที่แอปหลัก :3000 (ทำให้ 404)
+    const res = await fetch('/api/stats' + location.search, { cache: 'no-store' });
     data = await res.json();
   } catch (e) {
     showError(e && e.message ? e.message : e);
